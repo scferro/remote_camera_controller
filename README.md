@@ -66,7 +66,6 @@ A web-based application to remotely control and manage USB-connected cameras (pr
     ```bash
     python3 app.py
     ```
-    * **Note:** The application currently runs with `debug=False` and `use_reloader=False` in `app.py` for stability with camera connections. For development, you might enable these, but be aware that the reloader can cause issues with camera initialization (`Could not claim the USB device` errors).
 
 3.  The server will start, typically listening on `http://0.0.0.0:5000`.
 
