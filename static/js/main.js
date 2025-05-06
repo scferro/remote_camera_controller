@@ -1,4 +1,4 @@
-// --- DOM Elements (Keep previous selectors) ---
+// --- DOM Elements ---
 const statusConnection = document.getElementById('status-connection');
 const statusModel = document.getElementById('status-model');
 const statusMessage = document.getElementById('status-message');
@@ -40,7 +40,7 @@ const tlBrightnessValue = document.getElementById('tl-brightness-value');
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabContents = document.querySelectorAll('.tab-content');
 
-// --- State (Keep previous state variables) ---
+// --- State ---
 let previewIntervalId = null;
 let previewRefreshRate = 1000; // Milliseconds (matches 1 FPS default)
 let isPreviewActive = false;
@@ -48,53 +48,85 @@ let isTimelapseActive = false;
 let timelapseStatusIntervalId = null;
 let selectedTimelapseFolder = null; // Keep track of selected timelapse
 
-// --- Utility Functions (Keep previous) ---
+// --- Utility Functions ---
 function showSpinner(show = true) {
-    statusSpinner.classList.toggle('hidden', !show);
+    // Check if element exists before trying to modify it
+    if (statusSpinner) {
+        statusSpinner.classList.toggle('hidden', !show);
+    }
 }
 
 function disableControls(disable = true) {
-    // Disable buttons during critical operations
-    btnCaptureSingle.disabled = disable;
-    btnStartTimelapse.disabled = disable;
+    // Disable buttons during critical operations, checking if they exist first
+    if (btnCaptureSingle) btnCaptureSingle.disabled = disable;
+    if (btnStartTimelapse) btnStartTimelapse.disabled = disable;
     // Add others as needed
 }
 
-// --- API Functions (Keep previous) ---
+// --- API Functions ---
 
 async function fetchApi(url, options = {}, showLoading = true) {
+    // Ensure options is a valid object, default to empty if not.
+    const fetchOptions = (typeof options === 'object' && options !== null) ? options : {};
+
     if (showLoading) showSpinner(true);
     let responseData = null;
     try {
-        const response = await fetch(url, options);
+        // Use the validated fetchOptions
+        console.debug(`Fetching ${url} with options:`, fetchOptions); // Added debug log
+        const response = await fetch(url, fetchOptions);
         if (!response.ok) {
-            console.error(`API Error ${response.status}: ${response.statusText}`);
+            console.error(`API Error ${response.status}: ${response.statusText} for ${url}`);
             try {
                 const errData = await response.json();
                 console.error("Error details:", errData);
-                alert(`API Error: ${errData.message || response.statusText}`);
+                // Avoid alert for common errors like 404 on preview image
+                if (response.status !== 404 || !url.includes('/static/previews/preview.jpg')) {
+                     alert(`API Error: ${errData.message || response.statusText}`);
+                }
             } catch (e) {
-                 alert(`API Error ${response.status}: ${response.statusText}`);
+                 // Avoid alert for common errors like 404 on preview image
+                 if (response.status !== 404 || !url.includes('/static/previews/preview.jpg')) {
+                     alert(`API Error ${response.status}: ${response.statusText}`);
+                 }
             }
         } else {
-            responseData = await response.json();
+            // Check content type before assuming JSON
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                 responseData = await response.json();
+            } else {
+                 // Handle non-JSON responses if necessary, or log a warning
+                 console.warn(`Received non-JSON response for ${url}. Content-Type: ${contentType}`);
+                 responseData = await response.text(); // Get as text instead
+            }
         }
     } catch (error) {
-        console.error("Network or fetch error:", error);
-        alert(`Network or Fetch Error: ${error.message}. Is the server running?`);
+        // This catch block generates the alert you were seeing
+        console.error(`Network or fetch error for ${url}:`, error);
+        // Avoid alert for common errors like preview image load failure
+        if (!url.includes('/static/previews/preview.jpg')) {
+            alert(`Network or Fetch Error: ${error.message}. Is the server running?`);
+        }
+        return null; // Explicitly return null on fetch error
     } finally {
         if (showLoading) showSpinner(false);
     }
     return responseData;
 }
 
-// --- Camera Status (Keep previous) ---
+// --- Camera Status ---
 async function getCameraStatus() {
     console.log("Getting camera status...");
+    // Check if essential status elements exist
+    if (!statusConnection || !statusModel || !statusMessage) {
+        console.error("Status elements not found in DOM.");
+        return;
+    }
     statusConnection.textContent = 'Checking...';
     statusModel.textContent = 'N/A';
     statusMessage.textContent = '';
-    const data = await fetchApi('/api/camera/status');
+    const data = await fetchApi('/api/camera/status'); // Uses default options = {}
     if (data) {
         statusConnection.textContent = data.connected ? 'Connected' : 'Disconnected';
         statusConnection.style.color = data.connected ? 'green' : 'red';
@@ -102,68 +134,130 @@ async function getCameraStatus() {
         statusMessage.textContent = data.message || '';
         // Enable/disable controls based on connection
         const controlsShouldBeEnabled = data.connected;
-        btnStartPreview.disabled = !controlsShouldBeEnabled;
-        btnStopPreview.disabled = !isPreviewActive; // Stop only enabled if active
-        btnCaptureSingle.disabled = !controlsShouldBeEnabled || isTimelapseActive;
-        btnStartTimelapse.disabled = !controlsShouldBeEnabled || isTimelapseActive;
-        btnStopTimelapse.disabled = !isTimelapseActive; // Stop only enabled if active
-        // TODO: Enable/disable settings controls based on connection
+        // Check existence of buttons before setting disabled property
+        if (btnStartPreview) btnStartPreview.disabled = !controlsShouldBeEnabled || isPreviewActive;
+        if (btnStopPreview) btnStopPreview.disabled = !isPreviewActive;
+        if (btnCaptureSingle) btnCaptureSingle.disabled = !controlsShouldBeEnabled || isTimelapseActive;
+        if (btnStartTimelapse) btnStartTimelapse.disabled = !controlsShouldBeEnabled || isTimelapseActive;
+        if (btnStopTimelapse) btnStopTimelapse.disabled = !isTimelapseActive;
     } else {
         statusConnection.textContent = 'Error';
         statusConnection.style.color = 'red';
         statusModel.textContent = 'N/A';
         statusMessage.textContent = 'Failed to get status from server.';
         // Disable all controls on error
-        btnStartPreview.disabled = true;
-        btnStopPreview.disabled = true;
-        btnCaptureSingle.disabled = true;
-        btnStartTimelapse.disabled = true;
-        btnStopTimelapse.disabled = true;
+        if (btnStartPreview) btnStartPreview.disabled = true;
+        if (btnStopPreview) btnStopPreview.disabled = true;
+        if (btnCaptureSingle) btnCaptureSingle.disabled = true;
+        if (btnStartTimelapse) btnStartTimelapse.disabled = true;
+        if (btnStopTimelapse) btnStopTimelapse.disabled = true;
     }
 }
 
-// --- Camera Settings (Keep previous) ---
+// --- Camera Settings ---
 async function getCameraSettings() {
     console.log("Getting camera settings...");
-    cameraSettingsContainer.innerHTML = '<p class="text-gray-500">Loading settings...</p>';
-    const data = await fetchApi('/api/camera/settings', false); // Don't show global spinner for this
-
-    if (data && !data.error) {
-        buildSettingControls(data);
-    } else {
-        cameraSettingsContainer.innerHTML = `<p class="text-red-500">${data?.error || 'Error loading settings.'}</p>`;
+    // Check if container exists
+    if (!cameraSettingsContainer) {
+        console.error("Camera settings container not found in DOM.");
+        return;
     }
-}
+    cameraSettingsContainer.innerHTML = '<p class="text-gray-500">Loading settings...</p>';
+    const data = await fetchApi('/api/camera/settings', {}, false); // Explicit options = {}
 
-function buildSettingControls(settingsData) {
-    cameraSettingsContainer.innerHTML = ''; // Clear loading message or old settings
+    // *** ADDED LOG ***
+    console.log("Raw settings data received from API:", data);
+    // ******************
 
-    if (Object.keys(settingsData).length === 0) {
-         cameraSettingsContainer.innerHTML = '<p class="text-gray-500">No configurable settings found or camera not connected properly.</p>';
+    if (data === null) { // Check if fetchApi returned null due to error
+         cameraSettingsContainer.innerHTML = `<p class="text-red-500">Error loading settings. Check console/server logs.</p>`;
          return;
     }
 
-    // Recursively build controls (simplified example)
+    // Check if the received data is actually an empty object or has an error property
+    if ((typeof data === 'object' && data !== null && Object.keys(data).length === 0 && !data.error) || data.error) {
+         console.warn("Received empty or error settings object from API:", data);
+         cameraSettingsContainer.innerHTML = `<p class="text-gray-500">${data.error || 'No configurable settings found (empty data received).'}</p>`;
+         return;
+    }
+
+    // Proceed if data looks valid
+    buildSettingControls(data);
+}
+
+
+function buildSettingControls(settingsData) {
+    if (!cameraSettingsContainer) return; // Exit if container doesn't exist
+    cameraSettingsContainer.innerHTML = ''; // Clear loading message or old settings
+
+    // *** ADDED CHECK ***
+    if (!settingsData || typeof settingsData !== 'object' || Object.keys(settingsData).length === 0) {
+         console.warn("buildSettingControls called with invalid or empty data:", settingsData);
+         cameraSettingsContainer.innerHTML = '<p class="text-gray-500">No configurable settings found or camera not connected properly (invalid data passed to builder).</p>';
+         return;
+    }
+    console.log("Building controls with data:", settingsData);
+    // ******************
+
+    // Recursively build controls
     function createControlsRecursive(parentKey, configNode, parentElement) {
-        for (const key in configNode) {
-            const item = configNode[key];
-            // Use a unique separator unlikely to be in gphoto2 names
-            const currentPath = parentKey ? `${parentKey}///${key}` : key;
+        // *** ADDED LOG ***
+        console.debug(`Processing node: Key=${parentKey || 'root'}, Type=${configNode?.type}, Label=${configNode?.label}`);
+        // ******************
+
+        // Check if configNode is valid before proceeding
+        if (!configNode || typeof configNode !== 'object') {
+            console.warn(`Invalid configNode encountered for key: ${parentKey}`);
+            return; // Skip invalid nodes
+        }
+
+        // Determine keys to iterate over: configNode.children if it's a section, otherwise configNode itself for top level
+        const sourceObject = configNode.children ? configNode.children : configNode;
+        // Ensure sourceObject is iterable
+        if (!sourceObject || typeof sourceObject !== 'object') {
+             console.warn(`Source object for iteration is not an object for key: ${parentKey}`);
+             return;
+        }
+        const keysToIterate = Object.keys(sourceObject);
+
+
+        for (const key of keysToIterate) {
+             const item = sourceObject[key];
+             // Use a unique separator unlikely to be in gphoto2 names
+             const currentPath = parentKey ? `${parentKey}///${key}` : key;
+
+            // *** ADD THIS LOG ***
+            // console.debug(` -> Child/Item: Key=${key}, Path=${currentPath}, Type=${item?.type}`); // Can be very verbose
+            // ******************
+
+            // Check if item is valid
+             if (!item || typeof item !== 'object') {
+                 console.warn(`Invalid item encountered for key: ${key} under parent: ${parentKey}`);
+                 continue; // Skip invalid items
+             }
+
 
             if (item.type === 'SECTION') {
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'mb-4 p-3 border rounded bg-gray-50';
-                const sectionTitle = document.createElement('h4');
-                sectionTitle.className = 'font-semibold text-sm mb-2 text-gray-700';
-                sectionTitle.textContent = item.label || key;
-                sectionDiv.appendChild(sectionTitle);
-                createControlsRecursive(currentPath, item.children, sectionDiv);
-                // Only add section if it contains controls
-                if (sectionDiv.childElementCount > 1) {
-                     parentElement.appendChild(sectionDiv);
-                }
-
-            } else if (item.type === 'CHOICE' || item.type === 'RADIO' || item.type === 'MENU') { // Added MENU
+                 const sectionDiv = document.createElement('div');
+                 sectionDiv.className = 'mb-4 p-3 border rounded bg-gray-50';
+                 const sectionTitle = document.createElement('h4');
+                 sectionTitle.className = 'font-semibold text-sm mb-2 text-gray-700';
+                 sectionTitle.textContent = item.label || key;
+                 sectionDiv.appendChild(sectionTitle);
+                 // Pass the currentPath as the new parentKey for children of the section
+                 // Ensure item.children exists before recursing
+                 if (item.children && typeof item.children === 'object') {
+                     createControlsRecursive(currentPath, item, sectionDiv); // Pass item (the section node) itself
+                 } else {
+                      console.debug(`Section ${item.label || key} has no children property or it's not an object.`);
+                 }
+                 // Only add section if it contains controls (check children count > 1 because title is 1)
+                 if (sectionDiv.childElementCount > 1) {
+                      parentElement.appendChild(sectionDiv);
+                 } else {
+                      console.debug(`Skipping empty section: ${item.label || key}`);
+                 }
+            } else if (item.type === 'CHOICE' || item.type === 'RADIO' || item.type === 'MENU') {
                 const settingDiv = document.createElement('div');
                 settingDiv.className = 'setting-group';
                 const label = document.createElement('label');
@@ -176,13 +270,14 @@ function buildSettingControls(settingsData) {
                 select.id = `setting-${currentPath}`;
                 select.dataset.settingName = currentPath; // Store the API path
                 select.className = 'w-full'; // Make select full width
-                select.disabled = item.readonly; // Disable if readonly
+                select.disabled = item.readonly || item.value === "Error reading value"; // Disable if readonly or value error
 
-                if (item.choices && Array.isArray(item.choices)) {
+                if (item.choices && Array.isArray(item.choices) && item.choices[0] !== "Error reading choices") {
                     item.choices.forEach(choice => {
                         const option = document.createElement('option');
-                        option.value = choice;
-                        option.textContent = choice;
+                        // Handle potential null/undefined choices gracefully
+                        option.value = choice ?? ""; // Use empty string if choice is null/undefined
+                        option.textContent = choice ?? "N/A";
                         // Handle potential type differences (e.g., number vs string)
                         if (String(choice) === String(item.value)) {
                             option.selected = true;
@@ -190,11 +285,12 @@ function buildSettingControls(settingsData) {
                         select.appendChild(option);
                     });
                 } else {
-                     console.warn(`No choices found for CHOICE/RADIO/MENU widget: ${currentPath}`);
+                     console.warn(`No valid choices found for widget: ${currentPath}`);
                      const option = document.createElement('option');
-                     option.textContent = "No choices available";
+                     option.textContent = item.choices ? item.choices[0] : "No choices available"; // Show error if present
                      option.disabled = true;
                      select.appendChild(option);
+                     select.disabled = true; // Also disable select if choices failed
                 }
                 settingDiv.appendChild(select);
                 parentElement.appendChild(settingDiv);
@@ -205,38 +301,46 @@ function buildSettingControls(settingsData) {
                  const label = document.createElement('label');
                  label.className = 'setting-label';
                  label.setAttribute('for', `setting-${currentPath}`);
-                 // Find current value label span if it exists
+                 let valueDisplay = (item.value === "Error reading value") ? item.value : (item.value ?? 'N/A'); // Use ?? for null/undefined
                  let valueSpanId = `value-${currentPath}`;
-                 label.innerHTML = `${item.label || key} (<span id="${valueSpanId}">${item.value}</span>)`; // Show current value in label
+                 label.innerHTML = `${item.label || key} (<span id="${valueSpanId}">${valueDisplay}</span>)`;
                  settingDiv.appendChild(label);
 
                  const rangeInput = document.createElement('input');
                  rangeInput.type = 'range';
                  rangeInput.id = `setting-${currentPath}`;
                  rangeInput.dataset.settingName = currentPath;
-                 rangeInput.min = item.min;
-                 rangeInput.max = item.max;
-                 rangeInput.step = item.step;
-                 rangeInput.value = item.value;
-                 rangeInput.className = 'w-full'; // Make range full width
-                 rangeInput.disabled = item.readonly;
+                 // Use defaults if range info is missing or invalid
+                 rangeInput.min = !isNaN(parseFloat(item.min)) ? item.min : 0;
+                 rangeInput.max = !isNaN(parseFloat(item.max)) ? item.max : 100;
+                 rangeInput.step = !isNaN(parseFloat(item.step)) ? item.step : 1;
+                 // Ensure value is within min/max before setting, default to min if error/null/NaN
+                 let initialValue = (item.value === "Error reading value" || item.value === null || isNaN(parseFloat(item.value)))
+                                   ? rangeInput.min
+                                   : Math.max(parseFloat(rangeInput.min), Math.min(parseFloat(rangeInput.max), parseFloat(item.value)));
+                 rangeInput.value = initialValue;
+                 // Update display span if value was adjusted
+                 if (valueDisplay !== initialValue && item.value !== "Error reading value") {
+                     const valueSpan = label.querySelector(`#${valueSpanId}`);
+                     if (valueSpan) valueSpan.textContent = initialValue;
+                 }
 
-                 // Add event listener to update label on change
+                 rangeInput.className = 'w-full';
+                 rangeInput.disabled = item.readonly || item.value === "Error reading value";
+
                  rangeInput.addEventListener('input', (event) => {
                     const valueSpan = document.getElementById(valueSpanId);
                     if(valueSpan) valueSpan.textContent = event.target.value;
                  });
-                 // Add event listener to send API request on mouseup/touchend (less frequent updates)
-                 rangeInput.addEventListener('change', (event) => { // 'change' fires after release
-                     if (!item.readonly) {
+                 rangeInput.addEventListener('change', (event) => {
+                     if (!rangeInput.disabled) {
                         setCameraSetting(currentPath, event.target.value);
                      }
                  });
-
                  settingDiv.appendChild(rangeInput);
                  parentElement.appendChild(settingDiv);
 
-            } else if (item.type === 'TEXT' || item.type === 'DATE') { // Simple text input for others
+            } else if (item.type === 'TEXT' || item.type === 'DATE') {
                  const settingDiv = document.createElement('div');
                  settingDiv.className = 'setting-group';
                  const label = document.createElement('label');
@@ -246,90 +350,115 @@ function buildSettingControls(settingsData) {
                  settingDiv.appendChild(label);
 
                  const textInput = document.createElement('input');
-                 textInput.type = (item.type === 'DATE') ? 'text' : 'text'; // Keep as text for now, date widgets can be complex
+                 textInput.type = 'text';
                  textInput.id = `setting-${currentPath}`;
                  textInput.dataset.settingName = currentPath;
-                 textInput.value = item.value;
-                 textInput.readOnly = item.readonly; // Make read-only if applicable
+                 textInput.value = (item.value === "Error reading value") ? "" : (item.value ?? ""); // Show empty if error or null/undefined
+                 textInput.placeholder = (item.value === "Error reading value") ? "Error reading value" : "";
+                 textInput.readOnly = item.readonly || item.value === "Error reading value";
                  textInput.className = 'w-full';
-                 textInput.disabled = item.readonly;
+                 textInput.disabled = item.readonly || item.value === "Error reading value";
 
-                 if (!item.readonly) {
-                    textInput.addEventListener('change', (event) => { // Update on blur/enter
+                 if (!textInput.disabled) {
+                    textInput.addEventListener('change', (event) => {
                         setCameraSetting(currentPath, event.target.value);
                     });
                  }
-
                  settingDiv.appendChild(textInput);
                  parentElement.appendChild(settingDiv);
-            } else if (item.type === 'TOGGLE') { // Handle Toggle (like a checkbox)
+
+            } else if (item.type === 'TOGGLE') {
                  const settingDiv = document.createElement('div');
-                 settingDiv.className = 'setting-group flex items-center'; // Use flex for alignment
+                 settingDiv.className = 'setting-group flex items-center';
                  const checkbox = document.createElement('input');
                  checkbox.type = 'checkbox';
                  checkbox.id = `setting-${currentPath}`;
                  checkbox.dataset.settingName = currentPath;
-                 // Gphoto2 toggle values are often 0 or 1
-                 checkbox.checked = (parseInt(item.value, 10) === 1);
+                 // Check for error before parsing
+                 checkbox.checked = (item.value !== "Error reading value" && parseInt(item.value, 10) === 1);
                  checkbox.className = 'mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
-                 checkbox.disabled = item.readonly;
+                 checkbox.disabled = item.readonly || item.value === "Error reading value";
 
                  const label = document.createElement('label');
-                 label.className = 'setting-label mb-0'; // Remove bottom margin for inline label
+                 label.className = 'setting-label mb-0';
                  label.setAttribute('for', `setting-${currentPath}`);
                  label.textContent = item.label || key;
 
-                 if (!item.readonly) {
+                 if (!checkbox.disabled) {
                     checkbox.addEventListener('change', (event) => {
                         const newValue = event.target.checked ? 1 : 0;
                         setCameraSetting(currentPath, newValue);
                     });
                  }
-
                  settingDiv.appendChild(checkbox);
                  settingDiv.appendChild(label);
                  parentElement.appendChild(settingDiv);
             }
-            // Add handlers for other types (BUTTON, etc.) as needed
-        }
-    }
+            // else { // Log unhandled types
+            //     console.debug(`Unhandled widget type: ${item.type} for key: ${currentPath}, Label: ${item.label}`);
+            // }
+        } // End for loop iterating through children/keys
+    } // End createControlsRecursive
 
+
+    // Start the recursive process from the top level of the settings data
+    // Pass null as parentKey, settingsData as the node, and the container element
     createControlsRecursive(null, settingsData, cameraSettingsContainer);
-}
+
+    // Check if anything was actually added
+    if (cameraSettingsContainer.childElementCount === 0) {
+         console.warn("buildSettingControls finished but no elements were added to the container.");
+         // Check if the original data was actually empty vs processing failed
+         if (Object.keys(settingsData).length > 0) {
+             cameraSettingsContainer.innerHTML = '<p class="text-gray-500">Error processing settings data. Check console logs.</p>';
+         } else {
+              cameraSettingsContainer.innerHTML = '<p class="text-gray-500">No configurable settings found (processed data was empty).</p>';
+         }
+    } else {
+         console.log("Finished building setting controls.");
+    }
+} // End buildSettingControls
+
 
 async function setCameraSetting(settingName, value) {
     // Replace placeholder separator before sending
     const gphotoSettingName = settingName.replace(/\/\/\//g, "/");
     console.log(`Setting ${gphotoSettingName} to ${value}`);
     showSpinner(true); // Show spinner during setting change
-    const data = await fetchApi(`/api/camera/setting/${gphotoSettingName}`, { // Send correct path
+    const data = await fetchApi(`/api/camera/setting/${gphotoSettingName}`, { // <<< OPTIONS OBJECT
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: value })
-    }, false);
+    }, false); // API call handles its own spinner potentially, avoid double
     showSpinner(false);
 
     if (data && data.success) {
         console.log(`Setting ${gphotoSettingName} successful.`);
-        // Update UI immediately for responsiveness if possible (e.g., range slider label)
-        // Or optionally refresh just the affected part of the settings tree
+        // Optionally provide visual feedback (e.g., brief highlight)
+        // Refresh settings to confirm? Could be slow, especially if many settings change.
+        // Consider refreshing only the specific setting's UI element if possible.
+        // getCameraSettings(); // Uncomment to refresh all settings after change
     } else {
         console.error(`Failed to set ${gphotoSettingName}. Message: ${data?.message}`);
         alert(`Failed to set setting '${gphotoSettingName}'. ${data?.message || 'Check logs.'}`);
         // Revert UI? Refresh settings to get actual value back
-        getCameraSettings(); // Refresh all on failure
+        getCameraSettings();
     }
 }
 
 
-// --- Live Preview (Keep previous) ---
+// --- Live Preview ---
 async function startPreview() {
     console.log("Starting preview...");
-    if (isPreviewActive) return;
+    if (isPreviewActive) {
+        console.warn("Preview start requested but already active.");
+        return;
+    }
+    // Ensure buttons exist before disabling
+    if (btnStartPreview) btnStartPreview.disabled = true;
+    if (btnStopPreview) btnStopPreview.disabled = true; // Disable stop until success
 
-    stopPreview(); // Ensure any old interval is cleared
-
-    const rate = parseFloat(previewRateInput.value) || 1.0;
+    const rate = previewRateInput ? parseFloat(previewRateInput.value) || 1.0 : 1.0;
     previewRefreshRate = Math.max(100, 1000 / rate); // Calculate interval in ms, min 100ms
 
     const data = await fetchApi('/api/preview/start', {
@@ -341,33 +470,47 @@ async function startPreview() {
     if (data && data.success) {
         console.log(`Preview started backend. Refresh interval: ${previewRefreshRate}ms`);
         isPreviewActive = true;
-        btnStartPreview.disabled = true;
-        btnStopPreview.disabled = false;
+        if (btnStopPreview) btnStopPreview.disabled = false; // Enable stop on success
         // Use setInterval to refresh the image source
         previewIntervalId = setInterval(() => {
             // Add a timestamp to prevent browser caching
             const timestamp = new Date().getTime();
-            livePreviewImage.src = `/static/previews/preview.jpg?t=${timestamp}`;
-            livePreviewImage.style.display = 'block'; // Ensure visible
-            previewError.classList.add('hidden'); // Hide error message
+            if (livePreviewImage) {
+                livePreviewImage.src = `/static/previews/preview.jpg?t=${timestamp}`;
+                livePreviewImage.style.display = 'block'; // Ensure visible
+            }
+            if (previewError) previewError.classList.add('hidden'); // Hide error message
         }, previewRefreshRate);
         // Handle image loading errors during preview
-        livePreviewImage.onerror = () => {
-             console.error("Preview image failed to load during refresh.");
-             livePreviewImage.style.display = 'none';
-             previewError.classList.remove('hidden');
-             // Consider stopping preview automatically after several errors?
-        };
+        if (livePreviewImage) {
+            livePreviewImage.onerror = () => {
+                 console.error("Preview image failed to load during refresh.");
+                 if (livePreviewImage) livePreviewImage.style.display = 'none';
+                 if (previewError) previewError.classList.remove('hidden');
+                 // Consider stopping preview automatically after several errors?
+                 // stopPreview(); // Example: Stop on error
+            };
+        }
 
     } else {
          console.error("Failed to start preview on backend.");
          alert(`Failed to start preview. ${data?.message || 'Check camera connection and logs.'}`);
+         // Ensure buttons are in correct state if start fails
+         if (btnStartPreview) btnStartPreview.disabled = false; // Re-enable start
+         if (btnStopPreview) btnStopPreview.disabled = true;
     }
 }
 
+// Return a promise that resolves when stop is complete
 async function stopPreview() {
     console.log("Stopping preview...");
-    if (!isPreviewActive && !previewIntervalId) return; // Already stopped
+    if (!isPreviewActive && !previewIntervalId) {
+        console.log("Stop preview called but not active.");
+        // Ensure buttons are correct even if called when not active
+        if (btnStartPreview) btnStartPreview.disabled = false; // Should be controlled by getCameraStatus
+        if (btnStopPreview) btnStopPreview.disabled = true;
+        return Promise.resolve(); // Return resolved promise
+    }
 
     if (previewIntervalId) {
         clearInterval(previewIntervalId);
@@ -375,23 +518,28 @@ async function stopPreview() {
         console.log("Frontend preview refresh stopped.");
     }
     isPreviewActive = false;
-    // Button states will be updated by getCameraStatus() called after stop
-    // btnStartPreview.disabled = false;
-    // btnStopPreview.disabled = true;
+    // Disable stop immediately, Start will be re-enabled by getCameraStatus
+    if (btnStopPreview) btnStopPreview.disabled = true;
 
     // Tell the backend to stop generating previews
-    await fetchApi('/api/preview/stop', { method: 'POST' });
-    // Refresh camera status to update button states correctly
-    getCameraStatus();
+    // Use try/finally to ensure getCameraStatus runs even if fetch fails
+    try {
+         await fetchApi('/api/preview/stop', { method: 'POST' });
+    } catch(e) {
+         console.error("Error calling stop preview API:", e);
+    } finally {
+        // Refresh camera status to update button states correctly based on actual camera state
+        await getCameraStatus(); // Wait for status update before resolving
+    }
 }
 
-// --- Single Capture (Keep previous) ---
+// --- Single Capture ---
 async function captureSingle() {
     console.log("Triggering single capture...");
-    captureStatus.textContent = 'Capturing...';
+    if (captureStatus) captureStatus.textContent = 'Capturing...';
     disableControls(true); // Disable buttons during capture
 
-    const format = captureFormatSelect.value; // Get selected format override
+    const format = captureFormatSelect ? captureFormatSelect.value : 'current'; // Default if select not found
 
     const data = await fetchApi('/api/capture/single', {
         method: 'POST',
@@ -400,27 +548,34 @@ async function captureSingle() {
     });
 
     if (data && data.success) {
-        captureStatus.textContent = `Success: ${data.message || 'Image captured.'}`;
+        if (captureStatus) captureStatus.textContent = `Success: ${data.message || 'Image captured.'}`;
         console.log("File saved:", data.filepath);
         // Optionally: Refresh timelapse list if capture was part of one (or handle separately)
         listTimelapses(); // Refresh list in case it was a test shot in a new folder?
     } else {
-        captureStatus.textContent = `Error: ${data?.message || 'Capture failed.'}`;
+        if (captureStatus) captureStatus.textContent = `Error: ${data?.message || 'Capture failed.'}`;
         alert(`Capture failed: ${data?.message || 'Unknown error. Check logs.'}`);
     }
-    disableControls(false); // Re-enable controls
-    getCameraStatus(); // Refresh status which also updates button states
+    // Re-enable controls based on current status, not just blindly enabling
+    getCameraStatus();
 }
 
 
-// --- Timelapse (Keep previous start/stop/poll logic) ---
+// --- Timelapse ---
 async function startTimelapse() {
     console.log("Starting timelapse...");
-    if (isTimelapseActive) return;
+    if (isTimelapseActive) {
+        console.warn("Start timelapse requested but already active.");
+        return;
+    }
+    if (!timelapseIntervalInput || !timelapseCountInput) {
+         console.error("Timelapse input elements not found.");
+         return;
+    }
 
     const interval = parseInt(timelapseIntervalInput.value, 10);
     const count = parseInt(timelapseCountInput.value, 10);
-    const format = captureFormatSelect.value; // Use the same format override selector
+    const format = captureFormatSelect ? captureFormatSelect.value : 'current'; // Use the same format override selector
 
     if (isNaN(interval) || interval <= 0 || isNaN(count) || count <= 0) {
         alert("Please enter valid positive numbers for timelapse interval and count.");
@@ -428,8 +583,8 @@ async function startTimelapse() {
     }
 
     disableControls(true); // Disable other actions
-    btnStartTimelapse.disabled = true;
-    btnStopTimelapse.disabled = false; // Enable stop button
+    if (btnStartTimelapse) btnStartTimelapse.disabled = true;
+    if (btnStopTimelapse) btnStopTimelapse.disabled = false; // Enable stop button
 
     const data = await fetchApi('/api/timelapse/start', {
         method: 'POST',
@@ -440,34 +595,36 @@ async function startTimelapse() {
     if (data && data.success) {
         isTimelapseActive = true;
         console.log("Timelapse started on backend.");
-        timelapseStatusMessage.textContent = "Started...";
-        timelapseProgress.textContent = `0 / ${count}`;
+        if (timelapseStatusMessage) timelapseStatusMessage.textContent = "Started...";
+        if (timelapseProgress) timelapseProgress.textContent = `0 / ${count}`;
         // Start polling for status updates
         startTimelapseStatusPolling(count);
     } else {
         alert(`Failed to start timelapse: ${data?.message || 'Unknown error.'}`);
-        disableControls(false); // Re-enable controls if start failed
-        btnStartTimelapse.disabled = false;
-        btnStopTimelapse.disabled = true;
+        // Re-enable controls if start failed, based on actual status
+        getCameraStatus();
     }
 }
 
 async function stopTimelapse() {
     console.log("Stopping timelapse...");
-    if (!isTimelapseActive) return;
+    if (!isTimelapseActive) {
+         console.warn("Stop timelapse called but not active.");
+         return;
+    }
 
-    btnStopTimelapse.disabled = true; // Disable stop button immediately
+    if (btnStopTimelapse) btnStopTimelapse.disabled = true; // Disable stop button immediately
 
     const data = await fetchApi('/api/timelapse/stop', { method: 'POST' });
 
     if (data && data.success) {
         console.log("Timelapse stop signal sent.");
-        timelapseStatusMessage.textContent = "Stopping...";
-        // Polling will update the final status
+        if (timelapseStatusMessage) timelapseStatusMessage.textContent = "Stopping...";
+        // Polling will update the final status and button states
     } else {
         alert(`Failed to send stop signal: ${data?.message || 'Unknown error.'}`);
         // Might need manual intervention or refresh
-        btnStopTimelapse.disabled = false; // Re-enable if signal failed
+        if (btnStopTimelapse) btnStopTimelapse.disabled = false; // Re-enable if signal failed? Risky. Better to rely on poller.
     }
     // Note: isTimelapseActive will be set to false by the status poller when backend confirms
 }
@@ -476,9 +633,9 @@ function startTimelapseStatusPolling(totalCount) {
     if (timelapseStatusIntervalId) clearInterval(timelapseStatusIntervalId); // Clear previous poll
 
     timelapseStatusIntervalId = setInterval(async () => {
-        // Only poll if the tab is potentially visible or timelapse is active
-        // (Could optimize further by checking if tab is actually visible)
+        // Only poll if the timelapse is thought to be active client-side
         if (!isTimelapseActive && timelapseStatusIntervalId) {
+             console.debug("Timelapse status polling stopped (client state inactive).");
              clearInterval(timelapseStatusIntervalId);
              timelapseStatusIntervalId = null;
              return;
@@ -487,23 +644,32 @@ function startTimelapseStatusPolling(totalCount) {
         const statusData = await fetchApi('/api/timelapse/status', {}, false); // Poll quietly
 
         if (statusData) {
-            timelapseStatusMessage.textContent = statusData.message || 'Polling...';
-            timelapseProgress.textContent = `${statusData.count || 0} / ${statusData.total || totalCount}`;
+            // Check elements exist before updating
+            if (timelapseStatusMessage) timelapseStatusMessage.textContent = statusData.message || 'Polling...';
+            if (timelapseProgress) timelapseProgress.textContent = `${statusData.count || 0} / ${statusData.total || totalCount}`;
 
-            if (!statusData.active) {
-                // Timelapse finished or stopped
+            // Update client state based *only* on polled status
+            const backendIsActive = statusData.active === true;
+            if (!backendIsActive && isTimelapseActive) {
+                // Timelapse finished or stopped according to backend
                 console.log("Timelapse finished or stopped according to status poll.");
                 clearInterval(timelapseStatusIntervalId);
                 timelapseStatusIntervalId = null;
                 isTimelapseActive = false;
-                disableControls(false); // Re-enable controls
-                // Update button states via getCameraStatus
+                // Update controls based on actual camera status
                 listTimelapses(); // Refresh the list of sequences
                 getCameraStatus(); // Refresh main status/buttons
+            }
+            // Update client state if backend says active but client thought it wasn't (e.g. page reload)
+            else if (backendIsActive && !isTimelapseActive) {
+                 console.log("Detected active timelapse on backend during polling.");
+                 isTimelapseActive = true;
+                 getCameraStatus(); // Update button states
             }
         } else {
             // Failed to get status, maybe server issue?
             console.error("Failed to get timelapse status during polling.");
+            // Consider stopping polling after several errors?
         }
     }, 2000); // Poll every 2 seconds
 }
@@ -511,8 +677,14 @@ function startTimelapseStatusPolling(totalCount) {
 // --- Timelapse Listing & Selection ---
 async function listTimelapses() {
     console.log("Fetching timelapse list...");
+    if (!timelapseList) return; // Exit if element doesn't exist
     timelapseList.innerHTML = '<li>Loading...</li>';
     const data = await fetchApi('/api/timelapse/list', {}, false); // Fetch quietly
+
+    if (data === null) { // Check if fetchApi returned null due to error
+        timelapseList.innerHTML = `<li class="text-red-500">Error loading list. Check console/server logs.</li>`;
+        return;
+    }
 
     if (data && Array.isArray(data.timelapses)) {
         if (data.timelapses.length === 0) {
@@ -525,6 +697,10 @@ async function listTimelapses() {
                 li.textContent = folder;
                 li.dataset.folder = folder; // Store folder name
                 li.onclick = () => selectTimelapseForProcessing(folder); // Call selection handler
+                // Re-apply selection highlight if this folder was previously selected
+                if (folder === selectedTimelapseFolder) {
+                    li.classList.add('bg-blue-200');
+                }
                 timelapseList.appendChild(li);
             });
         }
@@ -537,11 +713,11 @@ function selectTimelapseForProcessing(folderName) {
      console.log(`Selected timelapse: ${folderName}`);
      selectedTimelapseFolder = folderName;
 
-     // Update UI
-     selectedTimelapseName.textContent = folderName;
-     timelapseSelectPrompt.classList.add('hidden');
-     timelapseOptionsPanel.classList.remove('hidden');
-     timelapseAssemblyStatus.textContent = ''; // Clear previous status
+     // Update UI only if elements exist
+     if (selectedTimelapseName) selectedTimelapseName.textContent = folderName;
+     if (timelapseSelectPrompt) timelapseSelectPrompt.classList.add('hidden');
+     if (timelapseOptionsPanel) timelapseOptionsPanel.classList.remove('hidden');
+     if (timelapseAssemblyStatus) timelapseAssemblyStatus.textContent = ''; // Clear previous status
 
      // Highlight selected item in the list
      document.querySelectorAll('#timelapse-list li').forEach(item => {
@@ -549,7 +725,7 @@ function selectTimelapseForProcessing(folderName) {
      });
 
      // Enable the assemble button
-     btnAssembleTimelapse.disabled = false;
+     if (btnAssembleTimelapse) btnAssembleTimelapse.disabled = false;
 }
 
 // --- Timelapse Processing ---
@@ -558,34 +734,48 @@ async function assembleTimelapse() {
         alert("Please select a timelapse sequence first.");
         return;
     }
+    if (!btnAssembleTimelapse || !timelapseAssemblyStatus) {
+         console.error("Timelapse assembly UI elements not found.");
+         return;
+    }
 
     console.log(`Assembling timelapse for: ${selectedTimelapseFolder}`);
     timelapseAssemblyStatus.textContent = 'Starting assembly... This may take a while.';
     btnAssembleTimelapse.disabled = true;
 
-    // Gather parameters from the UI
-    const processRaw = document.getElementById('tl-process-raw').checked;
-    const useCameraWb = document.getElementById('tl-use-camera-wb').checked;
-    const brightness = parseFloat(tlBrightnessSlider.value);
-    const frameRate = parseInt(document.getElementById('tl-fps').value, 10);
-    const resolution = document.getElementById('tl-resolution').value.trim() || null; // Null if empty
-    const cropX = parseInt(document.getElementById('tl-crop-x').value, 10);
-    const cropY = parseInt(document.getElementById('tl-crop-y').value, 10);
-    const cropW = parseInt(document.getElementById('tl-crop-w').value, 10);
-    const cropH = parseInt(document.getElementById('tl-crop-h').value, 10);
+    // Gather parameters from the UI elements safely
+    const processRawInput = document.getElementById('tl-process-raw');
+    const useCameraWbInput = document.getElementById('tl-use-camera-wb');
+    const fpsInput = document.getElementById('tl-fps');
+    const resolutionInput = document.getElementById('tl-resolution');
+    const cropXInput = document.getElementById('tl-crop-x');
+    const cropYInput = document.getElementById('tl-crop-y');
+    const cropWInput = document.getElementById('tl-crop-w');
+    const cropHInput = document.getElementById('tl-crop-h');
+
+    const processRaw = processRawInput ? processRawInput.checked : false;
+    const useCameraWb = useCameraWbInput ? useCameraWbInput.checked : true;
+    const brightness = tlBrightnessSlider ? parseFloat(tlBrightnessSlider.value) : 1.0;
+    const frameRate = fpsInput ? parseInt(fpsInput.value, 10) : 24;
+    const resolution = resolutionInput ? resolutionInput.value.trim() || null : null;
 
     let cropRect = null;
-    if (!isNaN(cropX) && !isNaN(cropY) && !isNaN(cropW) && !isNaN(cropH) && cropW > 0 && cropH > 0) {
-        cropRect = [cropX, cropY, cropW, cropH];
+    if (cropXInput && cropYInput && cropWInput && cropHInput) {
+        const cropX = parseInt(cropXInput.value, 10);
+        const cropY = parseInt(cropYInput.value, 10);
+        const cropW = parseInt(cropWInput.value, 10);
+        const cropH = parseInt(cropHInput.value, 10);
+        if (!isNaN(cropX) && !isNaN(cropY) && !isNaN(cropW) && !isNaN(cropH) && cropW > 0 && cropH > 0) {
+            cropRect = [cropX, cropY, cropW, cropH];
+        }
     }
 
     const params = {
         folder: selectedTimelapseFolder,
         process_raw: processRaw,
-        raw_settings: { // Pass RAW settings if processing is enabled
+        raw_settings: {
             use_camera_wb: useCameraWb,
             brightness: brightness,
-            // Add contrast/saturation here if implemented
         },
         assembly_settings: {
             frame_rate: frameRate,
@@ -594,7 +784,7 @@ async function assembleTimelapse() {
         }
     };
 
-    // TODO: Implement this API endpoint in Flask
+    // TODO: Implement this API endpoint in Flask: /api/process/timelapse
     const data = await fetchApi('/api/process/timelapse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -615,82 +805,109 @@ async function assembleTimelapse() {
 
 // --- Tab Switching Logic ---
 function switchTab(targetTabId) {
+    console.debug(`Switching to tab: ${targetTabId}`);
     // Hide all content panels
     tabContents.forEach(content => {
-        content.classList.add('hidden');
+        if (content) content.classList.add('hidden');
     });
 
     // Deactivate all tab buttons
     tabButtons.forEach(button => {
-        button.classList.remove('active');
+        if (button) button.classList.remove('active');
     });
 
     // Show the target content panel
     const targetContent = document.querySelector(targetTabId);
     if (targetContent) {
         targetContent.classList.remove('hidden');
+    } else {
+        console.error(`Tab content not found for target: ${targetTabId}`);
     }
 
     // Activate the target tab button
     const targetButton = document.querySelector(`[data-tab-target="${targetTabId}"]`);
     if (targetButton) {
         targetButton.classList.add('active');
+    } else {
+         console.error(`Tab button not found for target: ${targetTabId}`);
     }
 
     // Stop preview if switching away from the live control tab
     if (targetTabId !== '#tab-live-control' && isPreviewActive) {
         console.log("Switching tab away from Live Control, stopping preview.");
-        stopPreview();
+        stopPreview(); // Call async function but don't wait for it here
     }
 }
 
 // --- Event Listeners ---
-btnRefreshStatus.addEventListener('click', () => {
-    getCameraStatus();
-    getCameraSettings(); // Also refresh settings on manual status refresh
-});
-btnStartPreview.addEventListener('click', startPreview);
-btnStopPreview.addEventListener('click', stopPreview);
-btnCaptureSingle.addEventListener('click', captureSingle);
+// Ensure elements exist before adding listeners
+if (btnRefreshStatus) {
+    btnRefreshStatus.addEventListener('click', () => {
+        getCameraStatus();
+        getCameraSettings(); // Also refresh settings on manual status refresh
+    });
+}
+if (btnStartPreview) btnStartPreview.addEventListener('click', startPreview);
+if (btnStopPreview) btnStopPreview.addEventListener('click', stopPreview);
+if (btnCaptureSingle) btnCaptureSingle.addEventListener('click', captureSingle);
 
-btnStartTimelapse.addEventListener('click', startTimelapse);
-btnStopTimelapse.addEventListener('click', stopTimelapse);
-btnRefreshTimelapses.addEventListener('click', listTimelapses);
-btnAssembleTimelapse.addEventListener('click', assembleTimelapse);
+if (btnStartTimelapse) btnStartTimelapse.addEventListener('click', startTimelapse);
+if (btnStopTimelapse) btnStopTimelapse.addEventListener('click', stopTimelapse);
+if (btnRefreshTimelapses) btnRefreshTimelapses.addEventListener('click', listTimelapses);
+if (btnAssembleTimelapse) { // Check if button exists before adding listener
+    btnAssembleTimelapse.addEventListener('click', assembleTimelapse);
+}
+
 
 // Settings changes using event delegation
-cameraSettingsContainer.addEventListener('change', (event) => {
-    const target = event.target;
-    // Check if the changed element is one of our setting controls
-    if (target.dataset.settingName && (target.tagName === 'SELECT' || target.type === 'checkbox' || target.type === 'text' || target.type === 'range')) {
-         // Range input 'change' event is handled directly in buildSettingControls to avoid duplicate calls
-         if (target.type !== 'range') {
-             const value = target.type === 'checkbox' ? (target.checked ? 1 : 0) : target.value;
-             setCameraSetting(target.dataset.settingName, value);
-         }
-    }
-});
+if (cameraSettingsContainer) {
+    cameraSettingsContainer.addEventListener('change', (event) => {
+        const target = event.target;
+        // Check if the changed element is one of our setting controls AND not disabled
+        if (target.dataset.settingName && !target.disabled && (target.tagName === 'SELECT' || target.type === 'checkbox' || target.type === 'text' || target.type === 'range')) {
+             // Range input 'change' event is handled directly in buildSettingControls to avoid duplicate calls
+             if (target.type !== 'range') {
+                 const value = target.type === 'checkbox' ? (target.checked ? 1 : 0) : target.value;
+                 setCameraSetting(target.dataset.settingName, value);
+             }
+        }
+    });
+}
+
 
 // Preview rate change
-previewRateInput.addEventListener('change', () => {
-    const newRate = parseFloat(previewRateInput.value);
-    if (!isNaN(newRate) && newRate > 0) {
-        previewRefreshRate = Math.max(100, 1000 / newRate);
-        if (isPreviewActive) {
-            console.log("Preview rate changed, restarting preview...");
-            stopPreview().then(startPreview); // Chain stop and start
+if (previewRateInput) {
+    previewRateInput.addEventListener('change', () => {
+        const newRate = parseFloat(previewRateInput.value);
+        if (!isNaN(newRate) && newRate > 0) {
+            previewRefreshRate = Math.max(100, 1000 / newRate);
+            if (isPreviewActive) {
+                console.log("Preview rate changed, restarting preview...");
+                // Stop preview, then start it again once stop is complete
+                stopPreview().then(() => {
+                    startPreview();
+                });
+            }
+        } else {
+            // Reset to default or show error if invalid
+            previewRateInput.value = (1.0 / (previewRefreshRate / 1000)).toFixed(1);
         }
-    } else {
-        previewRateInput.value = 1.0 / (previewRefreshRate / 1000);
-    }
-});
+    });
+}
+
 
 // Tab button clicks
 tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const targetTabId = button.getAttribute('data-tab-target');
-        switchTab(targetTabId);
-    });
+    if (button) {
+        button.addEventListener('click', () => {
+            const targetTabId = button.getAttribute('data-tab-target');
+            if (targetTabId) {
+                switchTab(targetTabId);
+            } else {
+                 console.error("Tab button clicked but missing data-tab-target attribute.");
+            }
+        });
+    }
 });
 
 // Timelapse processing brightness slider update
@@ -704,14 +921,22 @@ if (tlBrightnessSlider && tlBrightnessValue) {
 // --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM loaded. Initializing...");
-    switchTab('#tab-live-control'); // Activate the first tab by default
+    // Ensure elements exist before trying to interact
+    if (tabButtons.length > 0 && tabContents.length > 0) {
+         switchTab('#tab-live-control'); // Activate the first tab by default
+    } else {
+         console.error("Tab buttons or content panels not found on DOM load.");
+    }
     getCameraStatus(); // Get status first
     getCameraSettings(); // Attempt to load settings
     listTimelapses(); // Attempt to load timelapses
 
-    // Set initial button states
-    btnStopPreview.disabled = true;
-    btnStopTimelapse.disabled = true;
-    btnAssembleTimelapse.disabled = true; // Disabled until a timelapse is selected
-    timelapseOptionsPanel.classList.add('hidden'); // Hide options initially
+    // Set initial button states (rely on getCameraStatus to set accurately)
+    if (btnStopPreview) btnStopPreview.disabled = true;
+    if (btnStopTimelapse) btnStopTimelapse.disabled = true;
+    if (btnAssembleTimelapse) btnAssembleTimelapse.disabled = true; // Disabled until a timelapse is selected
+    if (timelapseOptionsPanel) timelapseOptionsPanel.classList.add('hidden'); // Hide options initially
+
+    // Check for ongoing timelapse on load (in case of page refresh)
+    startTimelapseStatusPolling(0); // Start polling, it will update state if active
 });

@@ -25,7 +25,8 @@ os.makedirs(TIMELAPSE_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- Logging Setup ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(threadName)s] - %(message)s')
+# Use DEBUG level to see detailed logs added for settings
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - [%(threadName)s] - %(message)s')
 log = logging.getLogger(__name__)
 
 # --- Flask App Initialization ---
@@ -51,15 +52,17 @@ timelapse_status = {"active": False, "message": "Idle", "count": 0, "total": 0, 
 def get_camera():
     """Initializes and returns the camera handler instance, handling errors."""
     global camera_handler_instance
-    if camera_handler_instance is None:
-        log.info("Initializing Camera Handler...")
-        try:
-            # Pass the lock to the handler
-            camera_handler_instance = gphoto_handler.CameraHandler(lock=camera_lock)
-            log.info("Camera Handler initialized.")
-        except Exception as e:
-            log.error(f"Failed to initialize camera handler: {e}", exc_info=True)
-            camera_handler_instance = None # Ensure it's None if init fails
+    # Use lock to prevent race conditions during initialization check/creation
+    with camera_lock:
+        if camera_handler_instance is None:
+            log.info("Initializing Camera Handler...")
+            try:
+                # Pass the lock to the handler
+                camera_handler_instance = gphoto_handler.CameraHandler(lock=camera_lock)
+                log.info("Camera Handler initialized (instance created).")
+            except Exception as e:
+                log.error(f"Failed to initialize camera handler: {e}", exc_info=True)
+                camera_handler_instance = None # Ensure it's None if init fails
     return camera_handler_instance
 
 # --- Helper Functions ---
@@ -81,13 +84,13 @@ def generate_preview_frames():
                 log.warning("Preview capture failed in loop.")
                 # Optional: Signal frontend about the failure?
                 # For now, just wait before retrying
-                time.sleep(2) # Wait longer if capture fails
+                preview_active.wait(2.0) # Use event wait, wait longer if capture fails
                 continue
 
         except Exception as e:
             log.error(f"Error during preview capture: {e}", exc_info=True)
             # Wait before retrying after an error
-            time.sleep(2)
+            preview_active.wait(2.0)
             continue # Continue the loop
 
         # Calculate sleep time to maintain target frame rate
@@ -201,11 +204,17 @@ def index():
 def preview_image(filename):
     """Serves the latest preview image."""
     # Add headers to prevent caching
-    response = send_from_directory(os.path.dirname(PREVIEW_FILE_PATH), filename)
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+    try:
+        response = send_from_directory(os.path.dirname(PREVIEW_FILE_PATH), filename)
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    except FileNotFoundError:
+        log.warning(f"Preview file not found: {filename}")
+        # Return a 404 or perhaps a default placeholder image?
+        # For now, let Flask handle the 404
+        abort(404)
 
 
 # --- API Endpoints ---
@@ -229,9 +238,19 @@ def get_camera_settings_api():
     if cam:
         settings = cam.list_all_config()
         if settings is None:
+             log.error("list_all_config() returned None.") # Log if None
              return jsonify({"error": "Failed to retrieve settings from camera."}), 500
-        return jsonify(settings)
+
+        # *** ADDED DEBUG LOG ***
+        # Be careful logging this if settings contain sensitive info, but useful for debug
+        # Limit log size if necessary
+        settings_str = str(settings)
+        log.debug(f"Settings data being returned to frontend (length {len(settings_str)}): {settings_str[:1000]}{'...' if len(settings_str) > 1000 else ''}")
+        # ***********************
+
+        return jsonify(settings) # Return the actual settings dict
     else:
+        log.warning("Camera not available for /api/camera/settings request.")
         return jsonify({"error": "Camera not available."}), 503 # Service Unavailable
 
 @app.route('/api/camera/setting/<path:setting_name>', methods=['POST'])
@@ -247,7 +266,7 @@ def set_camera_setting_api(setting_name):
          return jsonify({"success": False, "message": "Invalid request: 'value' field missing in JSON body"}), 400
 
     # Need to replace placeholder separators used in JS with '/' for gphoto2
-    setting_name_gphoto = setting_name.replace("---", "/")
+    setting_name_gphoto = setting_name.replace("///", "/") # Use the triple slash separator
     log.info(f"API request: Set '{setting_name_gphoto}' to '{value}'")
 
     cam = get_camera()
@@ -269,13 +288,15 @@ def capture_single_api():
         # For now, capture directly to a default output location
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         capture_dir = os.path.join(OUTPUT_DIR, "single_captures")
-        os.makedirs(capture_dir, exist_ok=True)
+        # os.makedirs(capture_dir, exist_ok=True) # capture_image now handles this
 
         success, filepath = cam.capture_image(download_dir=capture_dir)
-        if success:
-            relative_path = os.path.relpath(filepath, BASE_DIR) if filepath else None
+        if success and filepath:
+            relative_path = os.path.relpath(filepath, BASE_DIR)
             return jsonify({"success": True, "message": f"Image captured: {os.path.basename(filepath)}", "filepath": relative_path})
-        else:
+        elif success and not filepath: # Capture succeeded but no download dir specified (shouldn't happen here)
+             return jsonify({"success": True, "message": "Image captured on camera (not downloaded).", "filepath": None})
+        else: # Capture failed
             return jsonify({"success": False, "message": "Capture failed. Check camera status and logs."}), 500
     else:
         return jsonify({"success": False, "message": "Camera not available."}), 503
@@ -389,7 +410,7 @@ def get_timelapse_status_api():
     """API endpoint to get the status of the timelapse."""
     global timelapse_status
     # Ensure status reflects thread life
-    if timelapse_status["active"] and (timelapse_thread is None or not timelapse_thread.is_alive()):
+    if timelapse_status.get("active", False) and (timelapse_thread is None or not timelapse_thread.is_alive()):
          # If status says active but thread is dead, update status
          if not timelapse_active.is_set(): # Check if it wasn't manually stopped
               timelapse_status["message"] = "Error: Timelapse thread terminated unexpectedly."
@@ -402,13 +423,14 @@ def list_timelapses_api():
     """API endpoint to list available timelapse sequence folders."""
     log.debug("API request: /api/timelapse/list")
     try:
+        if not os.path.isdir(TIMELAPSE_DIR):
+             log.warning(f"Timelapse directory does not exist: {TIMELAPSE_DIR}")
+             return jsonify({"timelapses": [], "message": "Timelapse directory not found."})
+
         folders = [d for d in os.listdir(TIMELAPSE_DIR) if os.path.isdir(os.path.join(TIMELAPSE_DIR, d))]
         # Optional: Sort folders, maybe newest first
         folders.sort(reverse=True)
         return jsonify({"timelapses": folders})
-    except FileNotFoundError:
-        log.warning(f"Timelapse directory not found: {TIMELAPSE_DIR}")
-        return jsonify({"timelapses": [], "message": "Timelapse directory not found."})
     except Exception as e:
         log.error(f"Error listing timelapse directories: {e}", exc_info=True)
         return jsonify({"error": "Failed to list timelapse directories."}), 500
@@ -449,7 +471,13 @@ def process_timelapse_api():
 # --- Main Execution ---
 if __name__ == '__main__':
     log.info("Attempting to initialize camera...")
-    get_camera() # Try to initialize camera on startup
+    # Initialize camera handler instance on startup
+    cam_instance = get_camera()
+    if cam_instance and cam_instance.camera:
+         log.info("Camera handler successfully initialized on startup.")
+    else:
+         log.warning("Camera handler failed to initialize on startup. Will retry on first request.")
+
     log.info("Starting Flask server on http://0.0.0.0:5000")
     # IMPORTANT: Disable debug and reloader for reliable camera interaction
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True, use_reloader=False)
