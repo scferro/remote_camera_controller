@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Camera Controller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Basic body styling and panel styles (from previous version) */
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #333; }
+        .panel { background-color: white; padding: 1.25rem; margin-bottom: 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .panel-title { font-size: 1.25em; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.75rem; color: #1f2937; }
+        /* Improved Button Styling */
+        button, .button { display: inline-block; background-color: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; text-align: center; transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        button:hover, .button:hover { background-color: #2563eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        button:disabled, .button:disabled { background-color: #9ca3af; cursor: not-allowed; box-shadow: none; }
+        button.danger, .button.danger { background-color: #ef4444; }
+        button.danger:hover, .button.danger:hover { background-color: #dc2626; }
+        /* Input and Select Styling */
+        select, input[type="text"], input[type="number"], input[type="range"] { padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-right: 0.25rem; box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.05); width: auto; }
+        input.w-input-xs { width: 4rem; } input.w-input-sm { width: 6rem; } input.w-input-md { width: 8rem; }
+        label { margin-right: 0.25rem; font-weight: 500; color: #4b5563; }
+        .setting-group { margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #e5e7eb; }
+        .setting-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+        .setting-label { display: block; margin-bottom: 0.25rem; font-size: 0.875rem; color: #6b7280; }
+        /* Loading Spinner */
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; display: inline-block; margin-left: 10px; vertical-align: middle; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+
+        /* Tab Styling */
+        .tab-button { padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 3px solid transparent; color: #6b7280; /* gray-500 */ font-weight: 500; transition: color 0.2s, border-color 0.2s; }
+        .tab-button:hover { color: #3b82f6; /* blue-500 */ }
+        .tab-button.active { color: #3b82f6; /* blue-500 */ border-bottom-color: #3b82f6; }
+        .tab-content { padding-top: 1.5rem; /* Add padding below tabs */ }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="p-5">
+
+    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Remote Camera Controller</h1>
+
+    <div class="border-b border-gray-300 mb-6">
+        <nav class="flex -mb-px" aria-label="Tabs">
+            <button class="tab-button active" data-tab-target="#tab-live-control">
+                Live Control
+            </button>
+            <button class="tab-button" data-tab-target="#tab-timelapse-processing">
+                Timelapse Processing
+            </button>
+            <button class="tab-button" data-tab-target="#tab-single-processing">
+                Single Image Processing
+            </button>
+        </nav>
+    </div>
+
+    <div id="tab-content-container">
+
+        <div id="tab-live-control" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1">
+                     <div class="panel">
+                        <h2 class="panel-title">Camera Status</h2>
+                        <div id="camera-status">
+                            <p>Status: <span id="status-connection" class="font-semibold">Checking...</span> <span id="status-spinner" class="spinner hidden"></span></p>
+                            <p>Model: <span id="status-model" class="font-semibold">N/A</span></p>
+                            <p id="status-message" class="text-sm text-gray-600 mt-1"></p>
+                        </div>
+                        <button id="btn-refresh-status" class="mt-3 text-sm py-1 px-3">Refresh Status</button>
+                    </div>
+
+                    <div class="panel">
+                        <h2 class="panel-title">Live Preview</h2>
+                        <img id="live-preview-image" src="/static/previews/preview.jpg?t=0" alt="Live Preview" class="w-full h-auto border mb-3 bg-gray-200 min-h-[150px]" onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
+                         <div id="preview-error" class="text-red-600 text-sm hidden">Preview failed to load. Ensure camera is connected, in PC Remote mode, and preview is started.</div>
+                        <div class="flex items-center mt-3">
+                            <label for="preview-rate" class="mr-2">Rate (fps):</label>
+                            <input type="number" id="preview-rate" value="1" min="0.1" max="10" step="0.1" class="w-input-xs py-1">
+                            <button id="btn-start-preview" class="ml-auto mr-1 text-sm py-1 px-3">Start</button>
+                            <button id="btn-stop-preview" class="text-sm py-1 px-3 danger">Stop</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-1">
+                     <div class="panel">
+                        <h2 class="panel-title">Capture Settings</h2>
+                        <div id="camera-settings-container" class="max-h-[calc(100vh-250px)] overflow-y-auto pr-2"> <p class="text-gray-500">Loading settings...</p>
+                        </div>
+                    </div>
+                 </div>
+                 <div class="md:col-span-1">
+                      <div class="panel">
+                        <h2 class="panel-title">Capture Actions</h2>
+                        <div class="mb-4 pb-4 border-b border-dashed">
+                            <label for="capture-format" class="block setting-label mb-1">Capture Format (Optional Override):</label>
+                            <select id="capture-format" class="w-full">
+                                <option value="current">Use Camera's Current Setting</option>
+                                </select>
+                            <button id="btn-capture-single" class="w-full mt-3">Capture Single Image</button>
+                            <p id="capture-status" class="text-sm text-gray-600 mt-2">Status: Idle</p>
+                        </div>
+
+                        <h3 class="text-lg font-semibold mb-2">Timelapse</h3>
+                        <div class="setting-group">
+                            <label for="timelapse-interval" class="setting-label">Interval (seconds):</label>
+                            <input type="number" id="timelapse-interval" value="5" min="1" class="w-input-sm">
+                        </div>
+                         <div class="setting-group">
+                            <label for="timelapse-count" class="setting-label">Number of Images:</label>
+                            <input type="number" id="timelapse-count" value="100" min="1" class="w-input-sm">
+                        </div>
+                        <button id="btn-start-timelapse" class="w-full mt-3">Start Timelapse</button>
+                        <button id="btn-stop-timelapse" class="w-full mt-2 danger">Stop Timelapse</button>
+                        <div id="timelapse-status-container" class="mt-2 text-sm text-gray-600">
+                            <p>Status: <span id="timelapse-status-message">Idle</span></p>
+                            <p>Progress: <span id="timelapse-progress">0 / 0</span></p>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h2 class="panel-title">Video (Experimental)</h2>
+                         <p class="text-xs mb-3 text-gray-500">Note: Video control via USB/gphoto2 is often unsupported by cameras.</p>
+                        <button id="btn-start-video" class="w-full mb-2" disabled>Start Recording</button>
+                        <button id="btn-stop-video" class="w-full danger" disabled>Stop Recording</button>
+                    </div>
+                 </div>
+            </div>
+        </div>
+
+        <div id="tab-timelapse-processing" class="tab-content hidden">
+             <div class="panel">
+                <h2 class="panel-title">Timelapse Processing & Assembly</h2>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div class="md:col-span-1">
+                         <h3 class="text-lg font-semibold mb-2">Available Timelapses:</h3>
+                         <div id="timelapse-list-container" class="mb-4">
+                             <div class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
+                                 <ul id="timelapse-list" class="list-disc pl-5 text-sm">
+                                     <li>Loading...</li>
+                                 </ul>
+                             </div>
+                             <button id="btn-refresh-timelapses" class="mt-3 text-sm py-1 px-3">Refresh List</button>
+                         </div>
+                     </div>
+                     <div class="md:col-span-2">
+                         <h3 class="text-lg font-semibold mb-2">Processing Options for <span id="selected-timelapse-name" class="text-blue-600">None</span></h3>
+                         <div id="timelapse-processor" class="space-y-4">
+                            <p id="timelapse-select-prompt" class="text-gray-500">Select a timelapse sequence from the list to process.</p>
+                            <div id="timelapse-options-panel" class="hidden space-y-4">
+                                <fieldset class="border p-3 rounded">
+                                    <legend class="text-base font-medium px-1">RAW Processing (if applicable)</legend>
+                                    <div class="setting-group">
+                                        <label class="setting-label"><input type="checkbox" id="tl-process-raw" checked> Process RAW files (if present)</label>
+                                    </div>
+                                    <div class="setting-group">
+                                         <label class="setting-label"><input type="checkbox" id="tl-use-camera-wb" checked> Use Camera White Balance</label>
+                                    </div>
+                                     <div class="setting-group">
+                                        <label for="tl-brightness" class="setting-label">Brightness/Exposure:</label>
+                                        <input type="range" id="tl-brightness" min="0.25" max="4.0" step="0.05" value="1.0" class="w-full">
+                                        <span class="text-xs">(Value: <span id="tl-brightness-value">1.0</span>)</span>
+                                    </div>
+                                    </fieldset>
+
+                                <fieldset class="border p-3 rounded">
+                                    <legend class="text-base font-medium px-1">Video Assembly</legend>
+                                     <div class="setting-group">
+                                        <label for="tl-fps" class="setting-label">Frame Rate (FPS):</label>
+                                        <input type="number" id="tl-fps" value="24" min="1" max="60" class="w-input-sm">
+                                    </div>
+                                     <div class="setting-group">
+                                        <label for="tl-resolution" class="setting-label">Resolution (e.g., 1920x1080, leave blank for original):</label>
+                                        <input type="text" id="tl-resolution" placeholder="Optional" class="w-input-md">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label class="setting-label">Crop (X, Y, Width, Height - Optional):</label>
+                                        <div class="flex space-x-2">
+                                            <input type="number" id="tl-crop-x" placeholder="X" class="w-input-xs">
+                                            <input type="number" id="tl-crop-y" placeholder="Y" class="w-input-xs">
+                                            <input type="number" id="tl-crop-w" placeholder="W" class="w-input-xs">
+                                            <input type="number" id="tl-crop-h" placeholder="H" class="w-input-xs">
+                                        </div>
+                                    </div>
+                                </fieldset>
+
+                                <button id="btn-assemble-timelapse" class="button mt-4">Assemble Video</button>
+                                <p id="timelapse-assembly-status" class="text-sm mt-2"></p>
+                            </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        <div id="tab-single-processing" class="tab-content hidden">
+             <div class="panel">
+                <h2 class="panel-title">Single Image Processing</h2>
+                <div id="single-image-processor">
+                    <p class="text-gray-500">Functionality not yet implemented.</p>
+                    <p class="text-gray-500 mt-2">Future: Select image (from captures/timelapses or upload), apply RAW settings, save processed version.</p>
+                    </div>
+            </div>
+        </div>
+
+    </div> <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
