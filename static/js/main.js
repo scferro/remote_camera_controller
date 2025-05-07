@@ -677,12 +677,16 @@ if (previewLandscape && previewPortrait) {
         if (livePreviewImage) {
             livePreviewImage.style.transform = 'rotate(0deg)';
         }
+        // Remove portrait styling if switching to landscape
+        if (previewContainer) previewContainer.classList.remove('portrait-preview');
     });
     previewPortrait.addEventListener('change', () => {
         if (livePreviewImage) {
             livePreviewImage.style.transform = 'rotate(90deg)';
             livePreviewImage.style.transformOrigin = 'center center';
         }
+        // Add portrait styling for proper vertical fitting
+        if (previewContainer) previewContainer.classList.add('portrait-preview');
     });
 }
 

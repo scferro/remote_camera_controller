@@ -33,6 +33,21 @@
         .tab-button:hover { color: #3b82f6; /* blue-500 */ }
         .tab-button.active { color: #3b82f6; /* blue-500 */ border-bottom-color: #3b82f6; }
         .tab-content { padding-top: 1.5rem; /* Add padding below tabs */ }
+
+        /* Updated portrait preview styles to avoid cropping -
+           the container resizes to fit the full image, which scales down if necessary */
+        .portrait-preview {
+            height: auto;
+            overflow: visible;
+        }
+        .portrait-preview #live-preview-image {
+            width: auto;
+            height: auto;
+            max-height: 800px; /* Adjusted to fixed pixel height */
+            object-fit: scale-down;
+            display: block;
+            margin: 0 auto;
+        }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
