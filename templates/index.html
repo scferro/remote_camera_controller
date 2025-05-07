@@ -73,11 +73,25 @@
 
                     <div class="panel">
                         <h2 class="panel-title">Live Preview</h2>
-                        <img id="live-preview-image" src="/static/previews/preview.jpg?t=0" alt="Live Preview" class="w-full h-auto border mb-3 bg-gray-200 min-h-[150px]" onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
-                         <div id="preview-error" class="text-red-600 text-sm hidden">Preview failed to load. Ensure camera is connected, in PC Remote mode, and preview is started.</div>
+                        <div class="flex items-center mb-2">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="preview-orientation" value="landscape" id="preview-landscape" class="mr-2" checked>
+                                Landscape
+                            </label>
+                            <label class="inline-flex items-center ml-4">
+                                <input type="radio" name="preview-orientation" value="portrait" id="preview-portrait" class="mr-2">
+                                Portrait
+                            </label>
+                        </div>
+                        <div id="preview-container" class="relative">
+                            <img id="live-preview-image" src="/static/previews/preview.jpg?t=0" alt="Live Preview" 
+                                 class="w-full h-auto border mb-3 bg-gray-200 min-h-[150px]" 
+                                 onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
+                        </div>
+                        <div id="preview-error" class="text-red-600 text-sm hidden">Preview failed to load.</div>
                         <div class="flex items-center mt-3">
                             <label for="preview-rate" class="mr-2">Rate (fps):</label>
-                            <input type="number" id="preview-rate" value="1" min="0.1" max="10" step="0.1" class="w-input-xs py-1">
+                            <input type="number" id="preview-rate" value="5" min="0.1" max="10" step="0.1" class="w-input-xs py-1">
                             <button id="btn-start-preview" class="ml-auto mr-1 text-sm py-1 px-3">Start</button>
                             <button id="btn-stop-preview" class="text-sm py-1 px-3 danger">Stop</button>
                         </div>
@@ -86,7 +100,20 @@
                 <div class="md:col-span-1">
                      <div class="panel">
                         <h2 class="panel-title">Capture Settings</h2>
-                        <div id="camera-settings-container" class="max-h-[calc(100vh-250px)] overflow-y-auto pr-2"> <p class="text-gray-500">Loading settings...</p>
+                        <div id="camera-settings-container" class="overflow-x-auto">
+                            <table class="table-auto w-full text-left border-collapse border border-gray-300">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border border-gray-300 px-4 py-2">Setting</th>
+                                        <th class="border border-gray-300 px-4 py-2">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="camera-settings-table">
+                                    <tr>
+                                        <td colspan="2" class="text-center text-gray-500">Loading settings...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                  </div>

@@ -9,12 +9,17 @@ const livePreviewImage = document.getElementById('live-preview-image');
 const previewError = document.getElementById('preview-error');
 const btnStartPreview = document.getElementById('btn-start-preview');
 const btnStopPreview = document.getElementById('btn-stop-preview');
+const previewRotate = document.getElementById('preview-rotate');
+const previewLandscape = document.getElementById('preview-landscape');
+const previewPortrait = document.getElementById('preview-portrait');
+const previewContainer = document.getElementById('preview-container');
 const previewRateInput = document.getElementById('preview-rate');
 
 const cameraSettingsContainer = document.getElementById('camera-settings-container');
 const captureFormatSelect = document.getElementById('capture-format');
 const btnCaptureSingle = document.getElementById('btn-capture-single');
 const captureStatus = document.getElementById('capture-status');
+const cameraSettingsTable = document.getElementById('camera-settings-table');
 
 const timelapseIntervalInput = document.getElementById('timelapse-interval');
 const timelapseCountInput = document.getElementById('timelapse-count');
@@ -157,295 +162,47 @@ async function getCameraStatus() {
 // --- Camera Settings ---
 async function getCameraSettings() {
     console.log("Getting camera settings...");
-    // Check if container exists
-    if (!cameraSettingsContainer) {
-        console.error("Camera settings container not found in DOM.");
+    const settingsTable = document.getElementById('camera-settings-table');
+    if (!settingsTable) {
+        console.error("Camera settings table not found in DOM.");
         return;
     }
-    cameraSettingsContainer.innerHTML = '<p class="text-gray-500">Loading settings...</p>';
-    const data = await fetchApi('/api/camera/settings', {}, false); // Explicit options = {}
+    settingsTable.innerHTML = '<tr><td colspan="2" class="text-center text-gray-500">Loading settings...</td></tr>';
+    const data = await fetchApi('/api/camera/settings', {}, false);
 
-    // *** ADDED LOG ***
-    console.log("Raw settings data received from API:", data);
-    // ******************
-
-    if (data === null) { // Check if fetchApi returned null due to error
-         cameraSettingsContainer.innerHTML = `<p class="text-red-500">Error loading settings. Check console/server logs.</p>`;
-         return;
-    }
-
-    // Check if the received data is actually an empty object or has an error property
-    if ((typeof data === 'object' && data !== null && Object.keys(data).length === 0 && !data.error) || data.error) {
-         console.warn("Received empty or error settings object from API:", data);
-         cameraSettingsContainer.innerHTML = `<p class="text-gray-500">${data.error || 'No configurable settings found (empty data received).'}</p>`;
-         return;
-    }
-
-    // Proceed if data looks valid
-    buildSettingControls(data);
-}
-
-
-function buildSettingControls(settingsData) {
-    if (!cameraSettingsContainer) return; // Exit if container doesn't exist
-    cameraSettingsContainer.innerHTML = ''; // Clear loading message or old settings
-
-    // *** ADDED CHECK ***
-    if (!settingsData || typeof settingsData !== 'object' || Object.keys(settingsData).length === 0) {
-         console.warn("buildSettingControls called with invalid or empty data:", settingsData);
-         cameraSettingsContainer.innerHTML = '<p class="text-gray-500">No configurable settings found or camera not connected properly (invalid data passed to builder).</p>';
-         return;
-    }
-    console.log("Building controls with data:", settingsData);
-    // ******************
-
-    // Recursively build controls
-    function createControlsRecursive(parentKey, configNode, parentElement) {
-        // *** ADDED LOG ***
-        console.debug(`Processing node: Key=${parentKey || 'root'}, Type=${configNode?.type}, Label=${configNode?.label}`);
-        // ******************
-
-        // Check if configNode is valid before proceeding
-        if (!configNode || typeof configNode !== 'object') {
-            console.warn(`Invalid configNode encountered for key: ${parentKey}`);
-            return; // Skip invalid nodes
-        }
-
-        // Determine keys to iterate over: configNode.children if it's a section, otherwise configNode itself for top level
-        const sourceObject = configNode.children ? configNode.children : configNode;
-        // Ensure sourceObject is iterable
-        if (!sourceObject || typeof sourceObject !== 'object') {
-             console.warn(`Source object for iteration is not an object for key: ${parentKey}`);
-             return;
-        }
-        const keysToIterate = Object.keys(sourceObject);
-
-
-        for (const key of keysToIterate) {
-             const item = sourceObject[key];
-             // Use a unique separator unlikely to be in gphoto2 names
-             const currentPath = parentKey ? `${parentKey}///${key}` : key;
-
-            // *** ADD THIS LOG ***
-            // console.debug(` -> Child/Item: Key=${key}, Path=${currentPath}, Type=${item?.type}`); // Can be very verbose
-            // ******************
-
-            // Check if item is valid
-             if (!item || typeof item !== 'object') {
-                 console.warn(`Invalid item encountered for key: ${key} under parent: ${parentKey}`);
-                 continue; // Skip invalid items
-             }
-
-
-            if (item.type === 'SECTION') {
-                 const sectionDiv = document.createElement('div');
-                 sectionDiv.className = 'mb-4 p-3 border rounded bg-gray-50';
-                 const sectionTitle = document.createElement('h4');
-                 sectionTitle.className = 'font-semibold text-sm mb-2 text-gray-700';
-                 sectionTitle.textContent = item.label || key;
-                 sectionDiv.appendChild(sectionTitle);
-                 // Pass the currentPath as the new parentKey for children of the section
-                 // Ensure item.children exists before recursing
-                 if (item.children && typeof item.children === 'object') {
-                     createControlsRecursive(currentPath, item, sectionDiv); // Pass item (the section node) itself
-                 } else {
-                      console.debug(`Section ${item.label || key} has no children property or it's not an object.`);
-                 }
-                 // Only add section if it contains controls (check children count > 1 because title is 1)
-                 if (sectionDiv.childElementCount > 1) {
-                      parentElement.appendChild(sectionDiv);
-                 } else {
-                      console.debug(`Skipping empty section: ${item.label || key}`);
-                 }
-            } else if (item.type === 'CHOICE' || item.type === 'RADIO' || item.type === 'MENU') {
-                const settingDiv = document.createElement('div');
-                settingDiv.className = 'setting-group';
-                const label = document.createElement('label');
-                label.className = 'setting-label';
-                label.setAttribute('for', `setting-${currentPath}`);
-                label.textContent = item.label || key;
-                settingDiv.appendChild(label);
-
-                const select = document.createElement('select');
-                select.id = `setting-${currentPath}`;
-                select.dataset.settingName = currentPath; // Store the API path
-                select.className = 'w-full'; // Make select full width
-                select.disabled = item.readonly || item.value === "Error reading value"; // Disable if readonly or value error
-
-                if (item.choices && Array.isArray(item.choices) && item.choices[0] !== "Error reading choices") {
-                    item.choices.forEach(choice => {
-                        const option = document.createElement('option');
-                        // Handle potential null/undefined choices gracefully
-                        option.value = choice ?? ""; // Use empty string if choice is null/undefined
-                        option.textContent = choice ?? "N/A";
-                        // Handle potential type differences (e.g., number vs string)
-                        if (String(choice) === String(item.value)) {
-                            option.selected = true;
-                        }
-                        select.appendChild(option);
-                    });
-                } else {
-                     console.warn(`No valid choices found for widget: ${currentPath}`);
-                     const option = document.createElement('option');
-                     option.textContent = item.choices ? item.choices[0] : "No choices available"; // Show error if present
-                     option.disabled = true;
-                     select.appendChild(option);
-                     select.disabled = true; // Also disable select if choices failed
-                }
-                settingDiv.appendChild(select);
-                parentElement.appendChild(settingDiv);
-
-            } else if (item.type === 'RANGE') {
-                 const settingDiv = document.createElement('div');
-                 settingDiv.className = 'setting-group';
-                 const label = document.createElement('label');
-                 label.className = 'setting-label';
-                 label.setAttribute('for', `setting-${currentPath}`);
-                 let valueDisplay = (item.value === "Error reading value") ? item.value : (item.value ?? 'N/A'); // Use ?? for null/undefined
-                 let valueSpanId = `value-${currentPath}`;
-                 label.innerHTML = `${item.label || key} (<span id="${valueSpanId}">${valueDisplay}</span>)`;
-                 settingDiv.appendChild(label);
-
-                 const rangeInput = document.createElement('input');
-                 rangeInput.type = 'range';
-                 rangeInput.id = `setting-${currentPath}`;
-                 rangeInput.dataset.settingName = currentPath;
-                 // Use defaults if range info is missing or invalid
-                 rangeInput.min = !isNaN(parseFloat(item.min)) ? item.min : 0;
-                 rangeInput.max = !isNaN(parseFloat(item.max)) ? item.max : 100;
-                 rangeInput.step = !isNaN(parseFloat(item.step)) ? item.step : 1;
-                 // Ensure value is within min/max before setting, default to min if error/null/NaN
-                 let initialValue = (item.value === "Error reading value" || item.value === null || isNaN(parseFloat(item.value)))
-                                   ? rangeInput.min
-                                   : Math.max(parseFloat(rangeInput.min), Math.min(parseFloat(rangeInput.max), parseFloat(item.value)));
-                 rangeInput.value = initialValue;
-                 // Update display span if value was adjusted
-                 if (valueDisplay !== initialValue && item.value !== "Error reading value") {
-                     const valueSpan = label.querySelector(`#${valueSpanId}`);
-                     if (valueSpan) valueSpan.textContent = initialValue;
-                 }
-
-                 rangeInput.className = 'w-full';
-                 rangeInput.disabled = item.readonly || item.value === "Error reading value";
-
-                 rangeInput.addEventListener('input', (event) => {
-                    const valueSpan = document.getElementById(valueSpanId);
-                    if(valueSpan) valueSpan.textContent = event.target.value;
-                 });
-                 rangeInput.addEventListener('change', (event) => {
-                     if (!rangeInput.disabled) {
-                        setCameraSetting(currentPath, event.target.value);
-                     }
-                 });
-                 settingDiv.appendChild(rangeInput);
-                 parentElement.appendChild(settingDiv);
-
-            } else if (item.type === 'TEXT' || item.type === 'DATE') {
-                 const settingDiv = document.createElement('div');
-                 settingDiv.className = 'setting-group';
-                 const label = document.createElement('label');
-                 label.className = 'setting-label';
-                 label.setAttribute('for', `setting-${currentPath}`);
-                 label.textContent = item.label || key;
-                 settingDiv.appendChild(label);
-
-                 const textInput = document.createElement('input');
-                 textInput.type = 'text';
-                 textInput.id = `setting-${currentPath}`;
-                 textInput.dataset.settingName = currentPath;
-                 textInput.value = (item.value === "Error reading value") ? "" : (item.value ?? ""); // Show empty if error or null/undefined
-                 textInput.placeholder = (item.value === "Error reading value") ? "Error reading value" : "";
-                 textInput.readOnly = item.readonly || item.value === "Error reading value";
-                 textInput.className = 'w-full';
-                 textInput.disabled = item.readonly || item.value === "Error reading value";
-
-                 if (!textInput.disabled) {
-                    textInput.addEventListener('change', (event) => {
-                        setCameraSetting(currentPath, event.target.value);
-                    });
-                 }
-                 settingDiv.appendChild(textInput);
-                 parentElement.appendChild(settingDiv);
-
-            } else if (item.type === 'TOGGLE') {
-                 const settingDiv = document.createElement('div');
-                 settingDiv.className = 'setting-group flex items-center';
-                 const checkbox = document.createElement('input');
-                 checkbox.type = 'checkbox';
-                 checkbox.id = `setting-${currentPath}`;
-                 checkbox.dataset.settingName = currentPath;
-                 // Check for error before parsing
-                 checkbox.checked = (item.value !== "Error reading value" && parseInt(item.value, 10) === 1);
-                 checkbox.className = 'mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
-                 checkbox.disabled = item.readonly || item.value === "Error reading value";
-
-                 const label = document.createElement('label');
-                 label.className = 'setting-label mb-0';
-                 label.setAttribute('for', `setting-${currentPath}`);
-                 label.textContent = item.label || key;
-
-                 if (!checkbox.disabled) {
-                    checkbox.addEventListener('change', (event) => {
-                        const newValue = event.target.checked ? 1 : 0;
-                        setCameraSetting(currentPath, newValue);
-                    });
-                 }
-                 settingDiv.appendChild(checkbox);
-                 settingDiv.appendChild(label);
-                 parentElement.appendChild(settingDiv);
-            }
-            // else { // Log unhandled types
-            //     console.debug(`Unhandled widget type: ${item.type} for key: ${currentPath}, Label: ${item.label}`);
-            // }
-        } // End for loop iterating through children/keys
-    } // End createControlsRecursive
-
-
-    // Start the recursive process from the top level of the settings data
-    // Pass null as parentKey, settingsData as the node, and the container element
-    createControlsRecursive(null, settingsData, cameraSettingsContainer);
-
-    // Check if anything was actually added
-    if (cameraSettingsContainer.childElementCount === 0) {
-         console.warn("buildSettingControls finished but no elements were added to the container.");
-         // Check if the original data was actually empty vs processing failed
-         if (Object.keys(settingsData).length > 0) {
-             cameraSettingsContainer.innerHTML = '<p class="text-gray-500">Error processing settings data. Check console logs.</p>';
-         } else {
-              cameraSettingsContainer.innerHTML = '<p class="text-gray-500">No configurable settings found (processed data was empty).</p>';
-         }
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        settingsTable.innerHTML = '';
+        populateSettingsTable(data, settingsTable);
     } else {
-         console.log("Finished building setting controls.");
-    }
-} // End buildSettingControls
-
-
-async function setCameraSetting(settingName, value) {
-    // Replace placeholder separator before sending
-    const gphotoSettingName = settingName.replace(/\/\/\//g, "/");
-    console.log(`Setting ${gphotoSettingName} to ${value}`);
-    showSpinner(true); // Show spinner during setting change
-    const data = await fetchApi(`/api/camera/setting/${gphotoSettingName}`, { // <<< OPTIONS OBJECT
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: value })
-    }, false); // API call handles its own spinner potentially, avoid double
-    showSpinner(false);
-
-    if (data && data.success) {
-        console.log(`Setting ${gphotoSettingName} successful.`);
-        // Optionally provide visual feedback (e.g., brief highlight)
-        // Refresh settings to confirm? Could be slow, especially if many settings change.
-        // Consider refreshing only the specific setting's UI element if possible.
-        // getCameraSettings(); // Uncomment to refresh all settings after change
-    } else {
-        console.error(`Failed to set ${gphotoSettingName}. Message: ${data?.message}`);
-        alert(`Failed to set setting '${gphotoSettingName}'. ${data?.message || 'Check logs.'}`);
-        // Revert UI? Refresh settings to get actual value back
-        getCameraSettings();
+        settingsTable.innerHTML = '<tr><td colspan="2" class="text-center text-gray-500">No settings available.</td></tr>';
     }
 }
 
+function populateSettingsTable(settings, tableElement, parentKey = '') {
+    for (const [key, value] of Object.entries(settings)) {
+        const fullKey = parentKey ? `${parentKey} / ${key}` : key;
+
+        if (value.children) {
+            // Add a row for the section
+            const sectionRow = document.createElement('tr');
+            sectionRow.innerHTML = `
+                <td colspan="2" class="border border-gray-300 px-4 py-2 font-semibold bg-gray-50">${fullKey}</td>
+            `;
+            tableElement.appendChild(sectionRow);
+
+            // Recursively add child settings
+            populateSettingsTable(value.children, tableElement, fullKey);
+        } else {
+            // Add a row for the individual setting
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="border border-gray-300 px-4 py-2">${fullKey}</td>
+                <td class="border border-gray-300 px-4 py-2">${value.value || 'N/A'}</td>
+            `;
+            tableElement.appendChild(row);
+        }
+    }
+}
 
 // --- Live Preview ---
 async function startPreview() {
@@ -857,7 +614,28 @@ if (btnRefreshTimelapses) btnRefreshTimelapses.addEventListener('click', listTim
 if (btnAssembleTimelapse) { // Check if button exists before adding listener
     btnAssembleTimelapse.addEventListener('click', assembleTimelapse);
 }
+if (previewRotate) {
+    previewRotate.addEventListener('change', (event) => {
+        if (livePreviewImage) {
+            livePreviewImage.style.transform = event.target.checked ? 'rotate(90deg)' : '';
+            livePreviewImage.style.transformOrigin = 'center center';
+        }
+    });
+}
 
+if (previewLandscape && previewPortrait) {
+    previewLandscape.addEventListener('change', () => {
+        if (livePreviewImage) {
+            livePreviewImage.style.transform = 'rotate(0deg)';
+        }
+    });
+    previewPortrait.addEventListener('change', () => {
+        if (livePreviewImage) {
+            livePreviewImage.style.transform = 'rotate(90deg)';
+            livePreviewImage.style.transformOrigin = 'center center';
+        }
+    });
+}
 
 // Settings changes using event delegation
 if (cameraSettingsContainer) {

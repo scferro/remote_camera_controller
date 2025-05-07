@@ -220,10 +220,7 @@ class CameraHandler:
         return WIDGET_TYPE_MAP.get(widget_type_enum, 'UNKNOWN')
 
     def _walk_config_recursive(self, widget):
-        """
-        Recursively processes a single configuration widget and its children.
-        """
-        # This function remains the same as the previous version
+        """Recursively processes a single configuration widget and its children."""
         if not widget:
             return None
 
@@ -233,34 +230,26 @@ class CameraHandler:
             widget_label = widget.get_label()
             widget_type_enum = widget.get_type()
             widget_type_str = self._get_widget_type_str(widget_type_enum)
-            widget_readonly = widget.get_readonly()
+
+            # Fetch the current value of the widget
+            try:
+                widget_value = widget.get_value()
+                if widget_value is None:
+                    log.warning(f"Widget '{widget_name}' has no value (None).")
+                    widget_value = "N/A"
+            except gp.GPhoto2Error as e:
+                log.warning(f"Could not get value for widget '{widget_name}': {e.string}")
+                widget_value = "N/A"
+            except Exception as e_value:
+                log.error(f"Unexpected error getting value for widget '{widget_name}': {e_value}", exc_info=True)
+                widget_value = "N/A"
 
             widget_info = {
                 "label": widget_label,
                 "type": widget_type_str,
-                "readonly": widget_readonly,
+                "readonly": widget.get_readonly(),
+                "value": widget_value,  # Include the fetched value
             }
-
-            if widget_type_enum != gp.GP_WIDGET_SECTION and widget_type_enum != gp.GP_WIDGET_WINDOW:
-                try:
-                    widget_info["value"] = widget.get_value()
-                except gp.GPhoto2Error as e:
-                    if e.code not in [gp.GP_ERROR_BAD_PARAMETERS, gp.GP_ERROR_NOT_SUPPORTED]:
-                        log.warning(f"Could not get value for widget '{widget_name}' ({widget_label}): {e.string} (Code: {e.code})")
-                    widget_info["value"] = "Error reading value"
-                except Exception as e_val:
-                     log.error(f"Unexpected error getting value for widget '{widget_name}': {e_val}", exc_info=True)
-                     widget_info["value"] = "Error reading value"
-
-            if widget_type_enum in [gp.GP_WIDGET_RADIO, gp.GP_WIDGET_MENU]:
-                try:
-                    widget_info["choices"] = [widget.get_choice(i) for i in range(widget.count_choices())]
-                except gp.GPhoto2Error as e:
-                     log.warning(f"Could not get choices for widget '{widget_name}': {e.string}")
-                     widget_info["choices"] = ["Error reading choices"]
-                except Exception as e_choices:
-                     log.error(f"Unexpected error getting choices for widget '{widget_name}': {e_choices}", exc_info=True)
-                     widget_info["choices"] = ["Error reading choices"]
 
             if widget_type_enum == gp.GP_WIDGET_RANGE:
                 try:
@@ -271,46 +260,50 @@ class CameraHandler:
                 except gp.GPhoto2Error as e:
                     log.warning(f"Could not get range for widget '{widget_name}': {e.string}")
                 except Exception as e_range:
-                     log.error(f"Unexpected error getting range for widget '{widget_name}': {e_range}", exc_info=True)
+                    log.error(f"Unexpected error getting range for widget '{widget_name}': {e_range}", exc_info=True)
 
             children_dict = {}
             try:
                 children = widget.get_children()
                 if children:
-                     for child in children:
-                         try:
-                             child_name = child.get_name()
-                             processed_child = self._walk_config_recursive(child)
-                             if processed_child:
-                                 children_dict[child_name] = processed_child
-                         except gp.GPhoto2Error as child_ex:
-                              log.warning(f"Error processing child '{child.get_name() if child else 'N/A'}' of '{widget_name}': {child_ex.string}. Skipping child.")
-                         except Exception as child_e:
-                              log.error(f"Unexpected error processing child '{child.get_name() if child else 'N/A'}' of '{widget_name}': {child_e}. Skipping child.", exc_info=True)
+                    for child in children:
+                        try:
+                            child_name = child.get_name()
+                            processed_child = self._walk_config_recursive(child)
+                            if processed_child:
+                                children_dict[child_name] = processed_child
+                        except gp.GPhoto2Error as child_ex:
+                            log.warning(f"Error processing child '{child.get_name() if child else 'N/A'}' of '{widget_name}': {child_ex.string}. Skipping child.")
+                        except Exception as child_e:
+                            log.error(f"Unexpected error processing child '{child.get_name() if child else 'N/A'}' of '{widget_name}': {child_e}. Skipping child.", exc_info=True)
 
-                     if children_dict:
-                         widget_info["children"] = children_dict
+                    if children_dict:
+                        widget_info["children"] = children_dict
 
             except gp.GPhoto2Error as e:
-                 if widget_type_enum == gp.GP_WIDGET_SECTION or widget_type_enum == gp.GP_WIDGET_WINDOW:
-                      log.warning(f"Could not get children for section widget '{widget_name}': {e.string}")
+                if widget_type_enum == gp.GP_WIDGET_SECTION or widget_type_enum == gp.GP_WIDGET_WINDOW:
+                    log.warning(f"Could not get children for section widget '{widget_name}': {e.string}")
             except Exception as e_children:
-                 log.error(f"Unexpected error getting children for widget '{widget_name}': {e_children}", exc_info=True)
+                log.error(f"Unexpected error getting children for widget '{widget_name}': {e_children}", exc_info=True)
 
             return widget_info
 
         except gp.GPhoto2Error as e:
-             widget_name_for_log = 'Unknown Widget'
-             try: widget_name_for_log = widget.get_name()
-             except: pass
-             log.warning(f"Error processing widget attributes for '{widget_name_for_log}': {e.string}")
-             return None
+            widget_name_for_log = 'Unknown Widget'
+            try:
+                widget_name_for_log = widget.get_name()
+            except:
+                pass
+            log.warning(f"Error processing widget attributes for '{widget_name_for_log}': {e.string}")
+            return None
         except Exception as e_basic:
-             widget_name_for_log = 'Unknown Widget'
-             try: widget_name_for_log = widget.get_name()
-             except: pass
-             log.error(f"Unexpected error processing widget attributes for '{widget_name_for_log}': {e_basic}", exc_info=True)
-             return None
+            widget_name_for_log = 'Unknown Widget'
+            try:
+                widget_name_for_log = widget.get_name()
+            except:
+                pass
+            log.error(f"Unexpected error processing widget attributes for '{widget_name_for_log}': {e_basic}", exc_info=True)
+            return None
 
     def _find_widget_by_path(self, config_root, path_elements):
         """Manually find a widget by traversing the tree using path elements."""
