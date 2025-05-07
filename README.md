@@ -7,10 +7,9 @@ A web-based application to remotely control and manage USB-connected cameras (pr
 * **Web Interface:** Control your camera from any web browser on your network.
 * **Live Preview:** View a live feed from the camera (configurable frame rate).
 * **Camera Status:** See connection status and camera model.
-* **Settings Control:** View and modify camera settings (ISO, Aperture, Shutter Speed, etc.) dynamically based on camera capabilities.
+* **Settings Display:** View camera settings (ISO, Aperture, Shutter Speed, etc.) dynamically based on camera capabilities.
 * **Single Capture:** Trigger single image captures (RAW or JPEG based on camera setting). Images are downloaded to the server.
 * **Timelapse Control:** Start and stop timelapse sequences with configurable interval and image count. Images are saved in dedicated folders.
-* **Tabbed UI:** Separate sections for Live Control, Timelapse Processing, and Single Image Processing.
 * **(Planned) Image Processing:**
     * RAW processing controls for single images (using rawpy).
     * Batch RAW processing for timelapse sequences.
