@@ -141,49 +141,41 @@ def run_timelapse(interval, count, format_override):
             log.info("Timelapse cancelled by user.")
             timelapse_status["message"] = f"Cancelled after {i} images."
             timelapse_status["active"] = False
-            return # Exit the loop if cancellation event is set
+            return
 
         timelapse_status["count"] = i + 1
         timelapse_status["message"] = f"Capturing image {i+1} of {count}..."
         log.info(timelapse_status["message"])
 
-        start_capture_time = time.time()
-        try:
-            # Set format if needed (implement in gphoto_handler first)
-            # if format_override and format_override != 'current':
-            #     cam.set_capture_format(format_override) # Assumes this method exists
+        cycle_start = time.time()  # Start timer immediately before capture
 
-            # Capture the image
-            success, filepath = cam.capture_image(download_dir=sequence_path)
+        try:
+            # Build a full file path using save_path keyword
+            photo_file = os.path.join(sequence_path, f"{i+1:04d}.jpg")
+            success, filepath = cam.capture_image(save_path=photo_file)
             if success:
                 log.info(f"Image {i+1} captured successfully: {filepath}")
             else:
                 log.error(f"Failed to capture image {i+1}.")
                 timelapse_status["message"] = f"Error capturing image {i+1}. Stopping."
                 timelapse_status["active"] = False
-                # Consider if we should retry or abort
-                return # Stop the timelapse on error
-
+                return
         except Exception as e:
             log.error(f"Exception during timelapse capture {i+1}: {e}", exc_info=True)
             timelapse_status["message"] = f"Error capturing image {i+1}. Stopping."
             timelapse_status["active"] = False
-            return # Stop on exception
+            return
 
-        # Calculate time remaining until next interval, accounting for capture time
-        elapsed_capture_time = time.time() - start_capture_time
-        wait_time = max(0, interval - elapsed_capture_time)
-
-        if i < count - 1: # Don't wait after the last image
+        # Compute wait time relative to cycle start so timing is exact
+        wait_time = max(0, interval - (time.time() - cycle_start))
+        if i < count - 1:
             timelapse_status["message"] = f"Image {i+1}/{count} captured. Waiting {wait_time:.1f}s..."
             log.info(f"Waiting {wait_time:.1f} seconds for next capture...")
-            # Wait for the interval, but check the cancellation flag periodically
-            cancelled = timelapse_active.wait(wait_time)
-            if cancelled:
-                 log.info("Timelapse cancelled during wait.")
-                 timelapse_status["message"] = f"Cancelled after {i+1} images."
-                 timelapse_status["active"] = False
-                 return
+            if timelapse_active.wait(wait_time):
+                log.info("Timelapse cancelled during wait.")
+                timelapse_status["message"] = f"Cancelled after {i+1} images."
+                timelapse_status["active"] = False
+                return
 
     log.info("Timelapse sequence completed.")
     timelapse_status["message"] = f"Completed {count} images in folder {sequence_folder_name}."
@@ -282,21 +274,19 @@ def capture_single_api():
     log.info("API request: /api/capture/single")
     cam = get_camera()
     if cam:
-        # Determine desired format (optional, implement setting this first)
-        # format_override = request.json.get('format', 'current') # Example
-
-        # For now, capture directly to a default output location
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         capture_dir = os.path.join(OUTPUT_DIR, "single_captures")
-        # os.makedirs(capture_dir, exist_ok=True) # capture_image now handles this
-
-        success, filepath = cam.capture_image(download_dir=capture_dir)
+        os.makedirs(capture_dir, exist_ok=True)
+        # Create a full file path for the captured image.
+        capture_file = os.path.join(capture_dir, f"{timestamp}.jpg")
+        
+        success, filepath = cam.capture_image(save_path=capture_file)
         if success and filepath:
             relative_path = os.path.relpath(filepath, BASE_DIR)
             return jsonify({"success": True, "message": f"Image captured: {os.path.basename(filepath)}", "filepath": relative_path})
-        elif success and not filepath: # Capture succeeded but no download dir specified (shouldn't happen here)
+        elif success and not filepath:
              return jsonify({"success": True, "message": "Image captured on camera (not downloaded).", "filepath": None})
-        else: # Capture failed
+        else:
             return jsonify({"success": False, "message": "Capture failed. Check camera status and logs."}), 500
     else:
         return jsonify({"success": False, "message": "Camera not available."}), 503

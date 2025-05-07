@@ -471,7 +471,7 @@ class CameraHandler:
                 return True
             except gp.GPhoto2Error as ex:
                 log.warning(f"Could not capture preview: {ex.code} - {ex.string}")
-                if ex.code in [gp.GP_ERROR_IO, gp.GP_ERROR_PTP_TIMEOUT, gp.GP_ERROR_CAMERA_BUSY, gp.GP_ERROR_CAMERA_ERROR]:
+                if ex.code in [gp.GP_ERROR_IO, gp.GP_ERROR_CAMERA_ERROR, gp.GP_ERROR_TIMEOUT, gp.GP_ERROR_CAMERA_BUSY]:
                     log.warning("Potential connection issue during preview. Releasing camera handle.")
                     self._release_camera()
                 if os.path.exists(target_path):
@@ -485,51 +485,50 @@ class CameraHandler:
                      except OSError: pass
                  return False
 
-    def capture_image(self, download_dir=None):
+    def capture_image(self, save_path):
         """
-        Captures a full-resolution image and optionally downloads it.
+        Captures a full-resolution image, downloads it, saves it to the specified file path,
+        attempts to delete it from the camera, then fully disconnects to ensure a fresh connection next time.
         """
-        # This function remains the same as the previous version
         with self.lock:
-            if not self._ensure_camera_connected(): return False, None
+            if not self._ensure_camera_connected():
+                return False, None
 
             try:
                 log.info("Capturing image...")
                 file_path = self.camera.capture(gp.GP_CAPTURE_IMAGE, self.context)
                 log.info(f"Image captured on camera: Folder: '{file_path.folder}', Name: '{file_path.name}'")
 
-                if download_dir:
-                    os.makedirs(download_dir, exist_ok=True)
-                    target_filename = os.path.join(download_dir, file_path.name)
-                    log.info(f"Downloading image to: {target_filename}...")
+                log.info(f"Downloading {file_path.name} from {file_path.folder}...")
+                camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
+                log.info("Image data downloaded from camera.")
+                camera_file.save(save_path)
+                log.info(f"Image successfully saved to {save_path}")
 
-                    try:
-                        camera_file = self.camera.file_get(
-                            file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, self.context)
-                        camera_file.save(target_filename)
-                        log.info(f"Image successfully saved to {target_filename}")
-                        return True, target_filename
+                try:
+                    log.info(f"Attempting to delete '{file_path.name}' from camera folder '{file_path.folder}'...")
+                    self.camera.file_delete(file_path.folder, file_path.name)
+                    log.info(f"Successfully deleted '{file_path.name}' from camera.")
+                except gp.GPhoto2Error as del_ex:
+                    log.warning(f"Could not delete image from camera: {del_ex.code} - {del_ex.string}")
+                except Exception as del_e:
+                    log.warning(f"Unexpected error deleting image from camera: {del_e}", exc_info=True)
 
-                    except gp.GPhoto2Error as dl_ex:
-                        log.error(f"Failed to download/save image '{file_path.name}': {dl_ex.code} - {dl_ex.string}")
-                        return False, None
-                    except Exception as dl_e:
-                         log.error(f"Unexpected error downloading/saving image '{file_path.name}': {dl_e}", exc_info=True)
-                         return False, None
-                else:
-                    return True, f"{file_path.folder}/{file_path.name}"
+                # Fully disconnect the camera after the capture
+                self._release_camera()
+
+                return True, save_path
 
             except gp.GPhoto2Error as ex:
-                log.error(f"Could not capture image: {ex.code} - {ex.string}")
-                if ex.code in [gp.GP_ERROR_IO, gp.GP_ERROR_PTP_TIMEOUT, gp.GP_ERROR_CAMERA_ERROR, gp.GP_ERROR_CAMERA_BUSY]:
-                     log.warning("Potential connection issue during capture. Releasing camera handle.")
-                     self._release_camera()
+                log.error(f"gphoto2 error during image capture/download: {ex.code} - {ex.string}")
+                if ex.code in [gp.GP_ERROR_IO, gp.GP_ERROR_CAMERA_ERROR, gp.GP_ERROR_TIMEOUT, gp.GP_ERROR_CAMERA_BUSY]:
+                    log.warning("Potential connection issue during capture. Releasing camera handle.")
+                    self._release_camera()
                 return False, None
             except Exception as e:
-                 log.error(f"Unexpected error capturing image: {e}", exc_info=True)
-                 return False, None
-
-    # _ensure_camera_connected remains the same
+                log.error(f"Unexpected error capturing image: {e}", exc_info=True)
+                self._release_camera()
+                return False, None
 
     def __del__(self):
         """Ensure camera is released when the object is destroyed."""
