@@ -4,6 +4,7 @@ const statusModel = document.getElementById('status-model');
 const statusMessage = document.getElementById('status-message');
 const statusSpinner = document.getElementById('status-spinner');
 const btnRefreshStatus = document.getElementById('btn-refresh-status');
+const btnRefreshSettings = document.getElementById('btn-refresh-settings'); // Added settings refresh button
 
 const livePreviewImage = document.getElementById('live-preview-image');
 const previewError = document.getElementById('preview-error');
@@ -20,6 +21,7 @@ const captureFormatSelect = document.getElementById('capture-format');
 const btnCaptureSingle = document.getElementById('btn-capture-single');
 const captureStatus = document.getElementById('capture-status');
 const cameraSettingsTable = document.getElementById('camera-settings-table');
+const cameraSettingsCollapsible = document.getElementById('camera-settings-collapsible');
 
 const timelapseIntervalInput = document.getElementById('timelapse-interval');
 const timelapseCountInput = document.getElementById('timelapse-count');
@@ -162,45 +164,89 @@ async function getCameraStatus() {
 // --- Camera Settings ---
 async function getCameraSettings() {
     console.log("Getting camera settings...");
-    const settingsTable = document.getElementById('camera-settings-table');
-    if (!settingsTable) {
-        console.error("Camera settings table not found in DOM.");
+    const settingsContainer = document.getElementById('camera-settings-collapsible');
+    if (!settingsContainer) {
+        console.error("Camera settings container not found in DOM.");
         return;
     }
-    settingsTable.innerHTML = '<tr><td colspan="2" class="text-center text-gray-500">Loading settings...</td></tr>';
+
+    // Save the state of open menus using a unique identifier (e.g., data-key)
+    const openMenus = new Set();
+    settingsContainer.querySelectorAll('.collapsible-header').forEach(header => {
+        const content = header.nextElementSibling;
+        if (!content.classList.contains('hidden')) {
+            openMenus.add(header.dataset.key); // Use a unique data attribute
+        }
+    });
+
+    settingsContainer.innerHTML = '<p class="text-center text-gray-500">Loading settings...</p>';
     const data = await fetchApi('/api/camera/settings', {}, false);
 
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-        settingsTable.innerHTML = '';
-        populateSettingsTable(data, settingsTable);
+        settingsContainer.innerHTML = '';
+        populateCollapsibleSettings(data, settingsContainer);
+
+        // Restore the state of open menus
+        settingsContainer.querySelectorAll('.collapsible-header').forEach(header => {
+            const content = header.nextElementSibling;
+            if (openMenus.has(header.dataset.key)) {
+                content.classList.remove('hidden');
+                header.querySelector('.toggle-icon').textContent = '-';
+            }
+        });
     } else {
-        settingsTable.innerHTML = '<tr><td colspan="2" class="text-center text-gray-500">No settings available.</td></tr>';
+        settingsContainer.innerHTML = '<p class="text-center text-gray-500">No settings available.</p>';
     }
 }
 
-function populateSettingsTable(settings, tableElement, parentKey = '') {
+function populateCollapsibleSettings(settings, container) {
     for (const [key, value] of Object.entries(settings)) {
-        const fullKey = parentKey ? `${parentKey} / ${key}` : key;
+        // Create a collapsible section for each top-level setting
+        const section = document.createElement('div');
+        section.className = 'mb-4';
 
+        const header = document.createElement('div');
+        header.className = 'collapsible-header flex justify-between items-center cursor-pointer bg-gray-100 px-4 py-2 border border-gray-300';
+        header.dataset.key = key; // Add a unique identifier for tracking
+        header.innerHTML = `
+            <span class="font-semibold">${value.label || key}</span>
+            <span class="toggle-icon">+</span>
+        `;
+
+        const content = document.createElement('div');
+        content.className = 'collapsible-content hidden border border-t-0 border-gray-300 px-4 py-2';
+
+        // Populate individual settings or child settings
         if (value.children) {
-            // Add a row for the section
-            const sectionRow = document.createElement('tr');
-            sectionRow.innerHTML = `
-                <td colspan="2" class="border border-gray-300 px-4 py-2 font-semibold bg-gray-50">${fullKey}</td>
-            `;
-            tableElement.appendChild(sectionRow);
-
-            // Recursively add child settings
-            populateSettingsTable(value.children, tableElement, fullKey);
+            for (const [childKey, childValue] of Object.entries(value.children)) {
+                const settingRow = document.createElement('div');
+                settingRow.className = 'flex justify-between items-center py-1';
+                settingRow.innerHTML = `
+                    <span>${childValue.label || childKey}</span>
+                    <span>${childValue.value || 'N/A'}</span>
+                `;
+                content.appendChild(settingRow);
+            }
         } else {
-            // Add a row for the individual setting
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="border border-gray-300 px-4 py-2">${fullKey}</td>
-                <td class="border border-gray-300 px-4 py-2">${value.value || 'N/A'}</td>
+            const settingRow = document.createElement('div');
+            settingRow.className = 'flex justify-between items-center py-1';
+            settingRow.innerHTML = `
+                <span>${value.label || key}</span>
+                <span>${value.value || 'N/A'}</span>
             `;
-            tableElement.appendChild(row);
+            content.appendChild(settingRow);
         }
+
+        // Attach click event listener to toggle visibility
+        header.addEventListener('click', () => {
+            content.classList.toggle('hidden');
+            const toggleIcon = header.querySelector('.toggle-icon');
+            toggleIcon.textContent = content.classList.contains('hidden') ? '+' : '-';
+        });
+
+        section.appendChild(header);
+        section.appendChild(content);
+        container.appendChild(section);
     }
 }
 
@@ -603,6 +649,9 @@ if (btnRefreshStatus) {
         getCameraStatus();
         getCameraSettings(); // Also refresh settings on manual status refresh
     });
+}
+if (btnRefreshSettings) { // Added event listener for settings refresh button
+    btnRefreshSettings.addEventListener('click', getCameraSettings);
 }
 if (btnStartPreview) btnStartPreview.addEventListener('click', startPreview);
 if (btnStopPreview) btnStopPreview.addEventListener('click', stopPreview);

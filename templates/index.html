@@ -40,7 +40,7 @@
 </head>
 <body class="p-5">
 
-    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Remote Camera Controller</h1>
+    <h1 class="text-4xl font-bold text-left mb-6 text-gray-800">Remote Camera Controller</h1>
 
     <div class="border-b border-gray-300 mb-6">
         <nav class="flex -mb-px" aria-label="Tabs">
@@ -61,15 +61,6 @@
         <div id="tab-live-control" class="tab-content">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="md:col-span-1">
-                     <div class="panel">
-                        <h2 class="panel-title">Camera Status</h2>
-                        <div id="camera-status">
-                            <p>Status: <span id="status-connection" class="font-semibold">Checking...</span> <span id="status-spinner" class="spinner hidden"></span></p>
-                            <p>Model: <span id="status-model" class="font-semibold">N/A</span></p>
-                            <p id="status-message" class="text-sm text-gray-600 mt-1"></p>
-                        </div>
-                        <button id="btn-refresh-status" class="mt-3 text-sm py-1 px-3">Refresh Status</button>
-                    </div>
 
                     <div class="panel">
                         <h2 class="panel-title">Live Preview</h2>
@@ -99,21 +90,23 @@
                 </div>
                 <div class="md:col-span-1">
                      <div class="panel">
-                        <h2 class="panel-title">Capture Settings</h2>
+                        <h2 class="panel-title flex justify-between items-center">
+                            Camera Status
+                            <button id="btn-refresh-settings" class="text-sm py-1 px-3 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                Refresh
+                            </button>
+                        </h2>
+                        <div id="camera-status">
+                            <p>Status: <span id="status-connection" class="font-semibold">Checking...</span> <span id="status-spinner" class="spinner hidden"></span></p>
+                            <p>Model: <span id="status-model" class="font-semibold">N/A</span></p>
+                            <p id="status-message" class="text-sm text-gray-600 mt-1"></p>
+                        </div>
+                        <h2 class="panel-title flex justify-between items-center">
+                        </h2>
                         <div id="camera-settings-container" class="overflow-x-auto">
-                            <table class="table-auto w-full text-left border-collapse border border-gray-300">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="border border-gray-300 px-4 py-2">Setting</th>
-                                        <th class="border border-gray-300 px-4 py-2">Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="camera-settings-table">
-                                    <tr>
-                                        <td colspan="2" class="text-center text-gray-500">Loading settings...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div id="camera-settings-collapsible">
+                                <!-- Collapsible sections will be dynamically populated here -->
+                            </div>
                         </div>
                     </div>
                  </div>
@@ -144,13 +137,6 @@
                             <p>Status: <span id="timelapse-status-message">Idle</span></p>
                             <p>Progress: <span id="timelapse-progress">0 / 0</span></p>
                         </div>
-                    </div>
-
-                    <div class="panel">
-                        <h2 class="panel-title">Video (Experimental)</h2>
-                         <p class="text-xs mb-3 text-gray-500">Note: Video control via USB/gphoto2 is often unsupported by cameras.</p>
-                        <button id="btn-start-video" class="w-full mb-2" disabled>Start Recording</button>
-                        <button id="btn-stop-video" class="w-full danger" disabled>Stop Recording</button>
                     </div>
                  </div>
             </div>
@@ -231,6 +217,19 @@
             </div>
         </div>
 
-    </div> <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    </div> 
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+            collapsibleHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    header.querySelector('.toggle-icon').textContent = content.classList.contains('hidden') ? '+' : '-';
+                });
+            });
+        });
+    </script>
 </body>
 </html>
