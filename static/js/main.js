@@ -23,8 +23,18 @@ const captureStatus = document.getElementById('capture-status');
 const cameraSettingsTable = document.getElementById('camera-settings-table');
 const cameraSettingsCollapsible = document.getElementById('camera-settings-collapsible');
 
-const timelapseIntervalInput = document.getElementById('timelapse-interval');
-const timelapseCountInput = document.getElementById('timelapse-count');
+// --- Advanced Timelapse Input DOM Elements ---
+const timelapseIntervalHours = document.getElementById('timelapse-interval-hours');
+const timelapseIntervalMinutes = document.getElementById('timelapse-interval-minutes');
+const timelapseIntervalSeconds = document.getElementById('timelapse-interval-seconds');
+const timelapseCount = document.getElementById('timelapse-count');
+const timelapseDurationHours = document.getElementById('timelapse-duration-hours');
+const timelapseDurationMinutes = document.getElementById('timelapse-duration-minutes');
+const timelapseDurationSeconds = document.getElementById('timelapse-duration-seconds');
+const calculateIntervalRadio = document.getElementById('calculate-interval');
+const calculateCountRadio = document.getElementById('calculate-count');
+const calculateDurationRadio = document.getElementById('calculate-duration');
+
 const btnStartTimelapse = document.getElementById('btn-start-timelapse');
 const btnStopTimelapse = document.getElementById('btn-stop-timelapse');
 const timelapseStatusContainer = document.getElementById('timelapse-status-container');
@@ -54,6 +64,7 @@ let isPreviewActive = false;
 let isTimelapseActive = false;
 let timelapseStatusIntervalId = null;
 let selectedTimelapseFolder = null; // Keep track of selected timelapse
+let calculatedField = 'duration'; // Default to calculating duration
 
 // --- Utility Functions ---
 function showSpinner(show = true) {
@@ -363,6 +374,148 @@ async function captureSingle() {
     getCameraStatus();
 }
 
+// --- Timelapse Input Functions ---
+// Calculate total interval in seconds
+function getTotalIntervalSeconds() {
+    const hours = parseInt(timelapseIntervalHours.value) || 0;
+    const minutes = parseInt(timelapseIntervalMinutes.value) || 0;
+    const seconds = parseInt(timelapseIntervalSeconds.value) || 0;
+    return hours * 3600 + minutes * 60 + seconds;
+}
+
+// Get total duration in seconds
+function getTotalDurationSeconds() {
+    const hours = parseInt(timelapseDurationHours.value) || 0;
+    const minutes = parseInt(timelapseDurationMinutes.value) || 0;
+    const seconds = parseInt(timelapseDurationSeconds.value) || 0;
+    return hours * 3600 + minutes * 60 + seconds;
+}
+
+// Convert total seconds to hours, minutes, seconds and update the respective inputs
+function updateTimeInputs(totalSeconds, hoursInput, minutesInput, secondsInput) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    
+    hoursInput.value = hours;
+    minutesInput.value = minutes;
+    secondsInput.value = seconds;
+}
+
+// Update the disabled state of inputs based on which field is being calculated
+function updateDisabledState() {
+    // First, enable all inputs
+    timelapseIntervalHours.disabled = false;
+    timelapseIntervalMinutes.disabled = false;
+    timelapseIntervalSeconds.disabled = false;
+    timelapseCount.disabled = false;
+    timelapseDurationHours.disabled = false;
+    timelapseDurationMinutes.disabled = false;
+    timelapseDurationSeconds.disabled = false;
+    
+    // Remove gray background from all
+    timelapseIntervalHours.style.backgroundColor = '';
+    timelapseIntervalMinutes.style.backgroundColor = '';
+    timelapseIntervalSeconds.style.backgroundColor = '';
+    timelapseCount.style.backgroundColor = '';
+    timelapseDurationHours.style.backgroundColor = '';
+    timelapseDurationMinutes.style.backgroundColor = '';
+    timelapseDurationSeconds.style.backgroundColor = '';
+    
+    // Then disable the calculated field inputs
+    if (calculatedField === 'interval') {
+        timelapseIntervalHours.disabled = true;
+        timelapseIntervalMinutes.disabled = true;
+        timelapseIntervalSeconds.disabled = true;
+        timelapseIntervalHours.style.backgroundColor = '#f3f4f6';
+        timelapseIntervalMinutes.style.backgroundColor = '#f3f4f6';
+        timelapseIntervalSeconds.style.backgroundColor = '#f3f4f6';
+    } else if (calculatedField === 'count') {
+        timelapseCount.disabled = true;
+        timelapseCount.style.backgroundColor = '#f3f4f6';
+    } else if (calculatedField === 'duration') {
+        timelapseDurationHours.disabled = true;
+        timelapseDurationMinutes.disabled = true;
+        timelapseDurationSeconds.disabled = true;
+        timelapseDurationHours.style.backgroundColor = '#f3f4f6';
+        timelapseDurationMinutes.style.backgroundColor = '#f3f4f6';
+        timelapseDurationSeconds.style.backgroundColor = '#f3f4f6';
+    }
+}
+
+// Calculate the value for the calculated field
+function updateCalculatedValue() {
+    if (calculatedField === 'interval') {
+        // Calculate interval based on count and duration
+        const count = parseInt(timelapseCount.value) || 1;
+        const durationSeconds = getTotalDurationSeconds();
+        
+        if (count > 1) {
+            // Divide total duration by (count-1) to get interval
+            const intervalSeconds = durationSeconds / (count - 1);
+            updateTimeInputs(intervalSeconds, timelapseIntervalHours, timelapseIntervalMinutes, timelapseIntervalSeconds);
+        }
+    } else if (calculatedField === 'count') {
+        // Calculate count based on interval and duration
+        const intervalSeconds = getTotalIntervalSeconds();
+        const durationSeconds = getTotalDurationSeconds();
+        
+        if (intervalSeconds > 0) {
+            // Add 1 because the first image is at time 0
+            const newCount = Math.floor(durationSeconds / intervalSeconds) + 1;
+            timelapseCount.value = Math.max(2, newCount); // Ensure at least 2 images
+        }
+    } else if (calculatedField === 'duration') {
+        // Calculate duration based on interval and count
+        const intervalSeconds = getTotalIntervalSeconds();
+        const count = parseInt(timelapseCount.value) || 1;
+        
+        // Total duration is interval * (count-1)
+        const durationSeconds = intervalSeconds * (count - 1);
+        updateTimeInputs(durationSeconds, timelapseDurationHours, timelapseDurationMinutes, timelapseDurationSeconds);
+    }
+}
+
+// Set up event listeners for the radio buttons
+function setupTimelapseInputListeners() {
+    // Radio button listeners
+    calculateIntervalRadio.addEventListener('change', function() {
+        if (this.checked) {
+            calculatedField = 'interval';
+            updateDisabledState();
+            updateCalculatedValue();
+        }
+    });
+    
+    calculateCountRadio.addEventListener('change', function() {
+        if (this.checked) {
+            calculatedField = 'count';
+            updateDisabledState();
+            updateCalculatedValue();
+        }
+    });
+    
+    calculateDurationRadio.addEventListener('change', function() {
+        if (this.checked) {
+            calculatedField = 'duration';
+            updateDisabledState();
+            updateCalculatedValue();
+        }
+    });
+    
+    // Input change listeners for interval
+    timelapseIntervalHours.addEventListener('change', updateCalculatedValue);
+    timelapseIntervalMinutes.addEventListener('change', updateCalculatedValue);
+    timelapseIntervalSeconds.addEventListener('change', updateCalculatedValue);
+    
+    // Input change listener for count
+    timelapseCount.addEventListener('change', updateCalculatedValue);
+    
+    // Input change listeners for duration
+    timelapseDurationHours.addEventListener('change', updateCalculatedValue);
+    timelapseDurationMinutes.addEventListener('change', updateCalculatedValue);
+    timelapseDurationSeconds.addEventListener('change', updateCalculatedValue);
+}
 
 // --- Timelapse ---
 async function startTimelapse() {
@@ -371,40 +524,35 @@ async function startTimelapse() {
         console.warn("Start timelapse requested but already active.");
         return;
     }
-    if (!timelapseIntervalInput || !timelapseCountInput) {
-         console.error("Timelapse input elements not found.");
-         return;
-    }
-
-    const interval = parseInt(timelapseIntervalInput.value, 10);
-    const count = parseInt(timelapseCountInput.value, 10);
-    const format = captureFormatSelect ? captureFormatSelect.value : 'current'; // Use the same format override selector
-
-    if (isNaN(interval) || interval <= 0 || isNaN(count) || count <= 0) {
-        alert("Please enter valid positive numbers for timelapse interval and count.");
+    
+    // Get values from UI
+    const intervalSeconds = getTotalIntervalSeconds();
+    const count = parseInt(timelapseCount.value, 10);
+    const format = captureFormatSelect ? captureFormatSelect.value : 'current';
+    
+    if (isNaN(intervalSeconds) || intervalSeconds <= 0 || isNaN(count) || count < 2) {
+        alert("Please enter valid values for timelapse interval and count. Interval must be greater than 0 and count must be at least 2.");
         return;
     }
-
-    disableControls(true); // Disable other actions
+    
+    disableControls(true);
     if (btnStartTimelapse) btnStartTimelapse.disabled = true;
-    if (btnStopTimelapse) btnStopTimelapse.disabled = false; // Enable stop button
-
+    if (btnStopTimelapse) btnStopTimelapse.disabled = false;
+    
     const data = await fetchApi('/api/timelapse/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interval: interval, count: count, format: format })
+        body: JSON.stringify({ interval: intervalSeconds, count: count, format: format })
     });
-
+    
     if (data && data.success) {
         isTimelapseActive = true;
         console.log("Timelapse started on backend.");
         if (timelapseStatusMessage) timelapseStatusMessage.textContent = "Started...";
         if (timelapseProgress) timelapseProgress.textContent = `0 / ${count}`;
-        // Start polling for status updates
         startTimelapseStatusPolling(count);
     } else {
         alert(`Failed to start timelapse: ${data?.message || 'Unknown error.'}`);
-        // Re-enable controls if start failed, based on actual status
         getCameraStatus();
     }
 }
@@ -513,145 +661,145 @@ async function listTimelapses() {
 }
 
 function selectTimelapseForProcessing(folderName) {
-     console.log(`Selected timelapse: ${folderName}`);
-     selectedTimelapseFolder = folderName;
+    console.log(`Selected timelapse: ${folderName}`);
+    selectedTimelapseFolder = folderName;
 
-     // Update UI only if elements exist
-     if (selectedTimelapseName) selectedTimelapseName.textContent = folderName;
-     if (timelapseSelectPrompt) timelapseSelectPrompt.classList.add('hidden');
-     if (timelapseOptionsPanel) timelapseOptionsPanel.classList.remove('hidden');
-     if (timelapseAssemblyStatus) timelapseAssemblyStatus.textContent = ''; // Clear previous status
+    // Update UI only if elements exist
+    if (selectedTimelapseName) selectedTimelapseName.textContent = folderName;
+    if (timelapseSelectPrompt) timelapseSelectPrompt.classList.add('hidden');
+    if (timelapseOptionsPanel) timelapseOptionsPanel.classList.remove('hidden');
+    if (timelapseAssemblyStatus) timelapseAssemblyStatus.textContent = ''; // Clear previous status
 
-     // Highlight selected item in the list
-     document.querySelectorAll('#timelapse-list li').forEach(item => {
-         item.classList.toggle('bg-blue-200', item.dataset.folder === folderName);
-     });
+    // Highlight selected item in the list
+    document.querySelectorAll('#timelapse-list li').forEach(item => {
+        item.classList.toggle('bg-blue-200', item.dataset.folder === folderName);
+    });
 
-     // Enable the assemble button
-     if (btnAssembleTimelapse) btnAssembleTimelapse.disabled = false;
+    // Enable the assemble button
+    if (btnAssembleTimelapse) btnAssembleTimelapse.disabled = false;
 }
 
 // --- Timelapse Processing ---
 async function assembleTimelapse() {
-    if (!selectedTimelapseFolder) {
-        alert("Please select a timelapse sequence first.");
+   if (!selectedTimelapseFolder) {
+       alert("Please select a timelapse sequence first.");
+       return;
+   }
+   if (!btnAssembleTimelapse || !timelapseAssemblyStatus) {
+        console.error("Timelapse assembly UI elements not found.");
         return;
-    }
-    if (!btnAssembleTimelapse || !timelapseAssemblyStatus) {
-         console.error("Timelapse assembly UI elements not found.");
-         return;
-    }
+   }
 
-    console.log(`Assembling timelapse for: ${selectedTimelapseFolder}`);
-    timelapseAssemblyStatus.textContent = 'Starting assembly... This may take a while.';
-    btnAssembleTimelapse.disabled = true;
+   console.log(`Assembling timelapse for: ${selectedTimelapseFolder}`);
+   timelapseAssemblyStatus.textContent = 'Starting assembly... This may take a while.';
+   btnAssembleTimelapse.disabled = true;
 
-    // Gather parameters from the UI elements safely
-    const processRawInput = document.getElementById('tl-process-raw');
-    const useCameraWbInput = document.getElementById('tl-use-camera-wb');
-    const fpsInput = document.getElementById('tl-fps');
-    const resolutionInput = document.getElementById('tl-resolution');
-    const cropXInput = document.getElementById('tl-crop-x');
-    const cropYInput = document.getElementById('tl-crop-y');
-    const cropWInput = document.getElementById('tl-crop-w');
-    const cropHInput = document.getElementById('tl-crop-h');
+   // Gather parameters from the UI elements safely
+   const processRawInput = document.getElementById('tl-process-raw');
+   const useCameraWbInput = document.getElementById('tl-use-camera-wb');
+   const fpsInput = document.getElementById('tl-fps');
+   const resolutionInput = document.getElementById('tl-resolution');
+   const cropXInput = document.getElementById('tl-crop-x');
+   const cropYInput = document.getElementById('tl-crop-y');
+   const cropWInput = document.getElementById('tl-crop-w');
+   const cropHInput = document.getElementById('tl-crop-h');
 
-    const processRaw = processRawInput ? processRawInput.checked : false;
-    const useCameraWb = useCameraWbInput ? useCameraWbInput.checked : true;
-    const brightness = tlBrightnessSlider ? parseFloat(tlBrightnessSlider.value) : 1.0;
-    const frameRate = fpsInput ? parseInt(fpsInput.value, 10) : 24;
-    const resolution = resolutionInput ? resolutionInput.value.trim() || null : null;
+   const processRaw = processRawInput ? processRawInput.checked : false;
+   const useCameraWb = useCameraWbInput ? useCameraWbInput.checked : true;
+   const brightness = tlBrightnessSlider ? parseFloat(tlBrightnessSlider.value) : 1.0;
+   const frameRate = fpsInput ? parseInt(fpsInput.value, 10) : 24;
+   const resolution = resolutionInput ? resolutionInput.value.trim() || null : null;
 
-    let cropRect = null;
-    if (cropXInput && cropYInput && cropWInput && cropHInput) {
-        const cropX = parseInt(cropXInput.value, 10);
-        const cropY = parseInt(cropYInput.value, 10);
-        const cropW = parseInt(cropWInput.value, 10);
-        const cropH = parseInt(cropHInput.value, 10);
-        if (!isNaN(cropX) && !isNaN(cropY) && !isNaN(cropW) && !isNaN(cropH) && cropW > 0 && cropH > 0) {
-            cropRect = [cropX, cropY, cropW, cropH];
-        }
-    }
+   let cropRect = null;
+   if (cropXInput && cropYInput && cropWInput && cropHInput) {
+       const cropX = parseInt(cropXInput.value, 10);
+       const cropY = parseInt(cropYInput.value, 10);
+       const cropW = parseInt(cropWInput.value, 10);
+       const cropH = parseInt(cropHInput.value, 10);
+       if (!isNaN(cropX) && !isNaN(cropY) && !isNaN(cropW) && !isNaN(cropH) && cropW > 0 && cropH > 0) {
+           cropRect = [cropX, cropY, cropW, cropH];
+       }
+   }
 
-    const params = {
-        folder: selectedTimelapseFolder,
-        process_raw: processRaw,
-        raw_settings: {
-            use_camera_wb: useCameraWb,
-            brightness: brightness,
-        },
-        assembly_settings: {
-            frame_rate: frameRate,
-            resolution: resolution,
-            crop_rect: cropRect
-        }
-    };
+   const params = {
+       folder: selectedTimelapseFolder,
+       process_raw: processRaw,
+       raw_settings: {
+           use_camera_wb: useCameraWb,
+           brightness: brightness,
+       },
+       assembly_settings: {
+           frame_rate: frameRate,
+           resolution: resolution,
+           crop_rect: cropRect
+       }
+   };
 
-    // TODO: Implement this API endpoint in Flask: /api/process/timelapse
-    const data = await fetchApi('/api/process/timelapse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-    });
+   // TODO: Implement this API endpoint in Flask: /api/process/timelapse
+   const data = await fetchApi('/api/process/timelapse', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(params)
+   });
 
-    if (data && data.success) {
-        timelapseAssemblyStatus.textContent = `Success! Video saved: ${data.output_path}`;
-        alert(`Timelapse assembly successful! Video saved to ${data.output_path}`);
-    } else {
-        timelapseAssemblyStatus.textContent = `Error: ${data?.message || 'Assembly failed. Check server logs.'}`;
-        alert(`Timelapse assembly failed: ${data?.message || 'Check server logs.'}`);
-    }
+   if (data && data.success) {
+       timelapseAssemblyStatus.textContent = `Success! Video saved: ${data.output_path}`;
+       alert(`Timelapse assembly successful! Video saved to ${data.output_path}`);
+   } else {
+       timelapseAssemblyStatus.textContent = `Error: ${data?.message || 'Assembly failed. Check server logs.'}`;
+       alert(`Timelapse assembly failed: ${data?.message || 'Check server logs.'}`);
+   }
 
-    btnAssembleTimelapse.disabled = false; // Re-enable button
+   btnAssembleTimelapse.disabled = false; // Re-enable button
 }
 
 
 // --- Tab Switching Logic ---
 function switchTab(targetTabId) {
-    console.debug(`Switching to tab: ${targetTabId}`);
-    // Hide all content panels
-    tabContents.forEach(content => {
-        if (content) content.classList.add('hidden');
-    });
+   console.debug(`Switching to tab: ${targetTabId}`);
+   // Hide all content panels
+   tabContents.forEach(content => {
+       if (content) content.classList.add('hidden');
+   });
 
-    // Deactivate all tab buttons
-    tabButtons.forEach(button => {
-        if (button) button.classList.remove('active');
-    });
+   // Deactivate all tab buttons
+   tabButtons.forEach(button => {
+       if (button) button.classList.remove('active');
+   });
 
-    // Show the target content panel
-    const targetContent = document.querySelector(targetTabId);
-    if (targetContent) {
-        targetContent.classList.remove('hidden');
-    } else {
-        console.error(`Tab content not found for target: ${targetTabId}`);
-    }
+   // Show the target content panel
+   const targetContent = document.querySelector(targetTabId);
+   if (targetContent) {
+       targetContent.classList.remove('hidden');
+   } else {
+       console.error(`Tab content not found for target: ${targetTabId}`);
+   }
 
-    // Activate the target tab button
-    const targetButton = document.querySelector(`[data-tab-target="${targetTabId}"]`);
-    if (targetButton) {
-        targetButton.classList.add('active');
-    } else {
-         console.error(`Tab button not found for target: ${targetTabId}`);
-    }
+   // Activate the target tab button
+   const targetButton = document.querySelector(`[data-tab-target="${targetTabId}"]`);
+   if (targetButton) {
+       targetButton.classList.add('active');
+   } else {
+        console.error(`Tab button not found for target: ${targetTabId}`);
+   }
 
-    // Stop preview if switching away from the live control tab
-    if (targetTabId !== '#tab-live-control' && isPreviewActive) {
-        console.log("Switching tab away from Live Control, stopping preview.");
-        stopPreview(); // Call async function but don't wait for it here
-    }
+   // Stop preview if switching away from the live control tab
+   if (targetTabId !== '#tab-live-control' && isPreviewActive) {
+       console.log("Switching tab away from Live Control, stopping preview.");
+       stopPreview(); // Call async function but don't wait for it here
+   }
 }
 
 // --- Event Listeners ---
 // Ensure elements exist before adding listeners
 if (btnRefreshStatus) {
-    btnRefreshStatus.addEventListener('click', () => {
-        getCameraStatus();
-        getCameraSettings(); // Also refresh settings on manual status refresh
-    });
+   btnRefreshStatus.addEventListener('click', () => {
+       getCameraStatus();
+       getCameraSettings(); // Also refresh settings on manual status refresh
+   });
 }
 if (btnRefreshSettings) { // Added event listener for settings refresh button
-    btnRefreshSettings.addEventListener('click', getCameraSettings);
+   btnRefreshSettings.addEventListener('click', getCameraSettings);
 }
 if (btnStartPreview) btnStartPreview.addEventListener('click', startPreview);
 if (btnStopPreview) btnStopPreview.addEventListener('click', stopPreview);
@@ -661,113 +809,128 @@ if (btnStartTimelapse) btnStartTimelapse.addEventListener('click', startTimelaps
 if (btnStopTimelapse) btnStopTimelapse.addEventListener('click', stopTimelapse);
 if (btnRefreshTimelapses) btnRefreshTimelapses.addEventListener('click', listTimelapses);
 if (btnAssembleTimelapse) { // Check if button exists before adding listener
-    btnAssembleTimelapse.addEventListener('click', assembleTimelapse);
+   btnAssembleTimelapse.addEventListener('click', assembleTimelapse);
 }
 if (previewRotate) {
-    previewRotate.addEventListener('change', (event) => {
-        if (livePreviewImage) {
-            livePreviewImage.style.transform = event.target.checked ? 'rotate(90deg)' : '';
-            livePreviewImage.style.transformOrigin = 'center center';
-        }
-    });
+   previewRotate.addEventListener('change', (event) => {
+       if (livePreviewImage) {
+           livePreviewImage.style.transform = event.target.checked ? 'rotate(90deg)' : '';
+           livePreviewImage.style.transformOrigin = 'center center';
+       }
+   });
 }
 
 if (previewLandscape && previewPortrait) {
-    previewLandscape.addEventListener('change', () => {
-        if (livePreviewImage) {
-            livePreviewImage.style.transform = 'rotate(0deg)';
-        }
-        // Remove portrait styling if switching to landscape
-        if (previewContainer) previewContainer.classList.remove('portrait-preview');
-    });
-    previewPortrait.addEventListener('change', () => {
-        if (livePreviewImage) {
-            livePreviewImage.style.transform = 'rotate(90deg)';
-            livePreviewImage.style.transformOrigin = 'center center';
-        }
-        // Add portrait styling for proper vertical fitting
-        if (previewContainer) previewContainer.classList.add('portrait-preview');
-    });
+   previewLandscape.addEventListener('change', () => {
+       if (livePreviewImage) {
+           livePreviewImage.style.transform = 'rotate(0deg)';
+       }
+       // Remove portrait styling if switching to landscape
+       if (previewContainer) previewContainer.classList.remove('portrait-preview');
+   });
+   previewPortrait.addEventListener('change', () => {
+       if (livePreviewImage) {
+           livePreviewImage.style.transform = 'rotate(90deg)';
+           livePreviewImage.style.transformOrigin = 'center center';
+       }
+       // Add portrait styling for proper vertical fitting
+       if (previewContainer) previewContainer.classList.add('portrait-preview');
+   });
 }
 
 // Settings changes using event delegation
 if (cameraSettingsContainer) {
-    cameraSettingsContainer.addEventListener('change', (event) => {
-        const target = event.target;
-        // Check if the changed element is one of our setting controls AND not disabled
-        if (target.dataset.settingName && !target.disabled && (target.tagName === 'SELECT' || target.type === 'checkbox' || target.type === 'text' || target.type === 'range')) {
-             // Range input 'change' event is handled directly in buildSettingControls to avoid duplicate calls
-             if (target.type !== 'range') {
-                 const value = target.type === 'checkbox' ? (target.checked ? 1 : 0) : target.value;
-                 setCameraSetting(target.dataset.settingName, value);
-             }
-        }
-    });
+   cameraSettingsContainer.addEventListener('change', (event) => {
+       const target = event.target;
+       // Check if the changed element is one of our setting controls AND not disabled
+       if (target.dataset.settingName && !target.disabled && (target.tagName === 'SELECT' || target.type === 'checkbox' || target.type === 'text' || target.type === 'range')) {
+            // Range input 'change' event is handled directly in buildSettingControls to avoid duplicate calls
+            if (target.type !== 'range') {
+                const value = target.type === 'checkbox' ? (target.checked ? 1 : 0) : target.value;
+                setCameraSetting(target.dataset.settingName, value);
+            }
+       }
+   });
 }
 
 
 // Preview rate change
 if (previewRateInput) {
-    previewRateInput.addEventListener('change', () => {
-        const newRate = parseFloat(previewRateInput.value);
-        if (!isNaN(newRate) && newRate > 0) {
-            previewRefreshRate = Math.max(100, 1000 / newRate);
-            if (isPreviewActive) {
-                console.log("Preview rate changed, restarting preview...");
-                // Stop preview, then start it again once stop is complete
-                stopPreview().then(() => {
-                    startPreview();
-                });
-            }
-        } else {
-            // Reset to default or show error if invalid
-            previewRateInput.value = (1.0 / (previewRefreshRate / 1000)).toFixed(1);
-        }
-    });
+   previewRateInput.addEventListener('change', () => {
+       const newRate = parseFloat(previewRateInput.value);
+       if (!isNaN(newRate) && newRate > 0) {
+           previewRefreshRate = Math.max(100, 1000 / newRate);
+           if (isPreviewActive) {
+               console.log("Preview rate changed, restarting preview...");
+               // Stop preview, then start it again once stop is complete
+               stopPreview().then(() => {
+                   startPreview();
+               });
+           }
+       } else {
+           // Reset to default or show error if invalid
+           previewRateInput.value = (1.0 / (previewRefreshRate / 1000)).toFixed(1);
+       }
+   });
 }
 
 
 // Tab button clicks
 tabButtons.forEach(button => {
-    if (button) {
-        button.addEventListener('click', () => {
-            const targetTabId = button.getAttribute('data-tab-target');
-            if (targetTabId) {
-                switchTab(targetTabId);
-            } else {
-                 console.error("Tab button clicked but missing data-tab-target attribute.");
-            }
-        });
-    }
+   if (button) {
+       button.addEventListener('click', () => {
+           const targetTabId = button.getAttribute('data-tab-target');
+           if (targetTabId) {
+               switchTab(targetTabId);
+           } else {
+                console.error("Tab button clicked but missing data-tab-target attribute.");
+           }
+       });
+   }
 });
 
 // Timelapse processing brightness slider update
 if (tlBrightnessSlider && tlBrightnessValue) {
-    tlBrightnessSlider.addEventListener('input', (event) => {
-        tlBrightnessValue.textContent = parseFloat(event.target.value).toFixed(2);
-    });
+   tlBrightnessSlider.addEventListener('input', (event) => {
+       tlBrightnessValue.textContent = parseFloat(event.target.value).toFixed(2);
+   });
 }
 
 
 // --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM loaded. Initializing...");
-    // Ensure elements exist before trying to interact
-    if (tabButtons.length > 0 && tabContents.length > 0) {
-         switchTab('#tab-live-control'); // Activate the first tab by default
-    } else {
-         console.error("Tab buttons or content panels not found on DOM load.");
-    }
-    getCameraStatus(); // Get status first
-    getCameraSettings(); // Attempt to load settings
-    listTimelapses(); // Attempt to load timelapses
+   console.log("DOM loaded. Initializing...");
+   // Ensure elements exist before trying to interact
+   if (tabButtons.length > 0 && tabContents.length > 0) {
+        switchTab('#tab-live-control'); // Activate the first tab by default
+   } else {
+        console.error("Tab buttons or content panels not found on DOM load.");
+   }
+   getCameraStatus(); // Get status first
+   getCameraSettings(); // Attempt to load settings
+   listTimelapses(); // Attempt to load timelapses
 
-    // Set initial button states (rely on getCameraStatus to set accurately)
-    if (btnStopPreview) btnStopPreview.disabled = true;
-    if (btnStopTimelapse) btnStopTimelapse.disabled = true;
-    if (btnAssembleTimelapse) btnAssembleTimelapse.disabled = true; // Disabled until a timelapse is selected
-    if (timelapseOptionsPanel) timelapseOptionsPanel.classList.add('hidden'); // Hide options initially
+   // Set initial button states (rely on getCameraStatus to set accurately)
+   if (btnStopPreview) btnStopPreview.disabled = true;
+   if (btnStopTimelapse) btnStopTimelapse.disabled = true;
+   if (btnAssembleTimelapse) btnAssembleTimelapse.disabled = true; // Disabled until a timelapse is selected
+   if (timelapseOptionsPanel) timelapseOptionsPanel.classList.add('hidden'); // Hide options initially
 
-    // Check for ongoing timelapse on load (in case of page refresh)
-    startTimelapseStatusPolling(0); // Start polling, it will update state if active
+   // Set default radio button state for timelapse calculation
+   if (calculateDurationRadio) {
+       calculateDurationRadio.checked = true;
+       calculatedField = 'duration';
+   }
+   
+   // Set up timelapse input listeners
+   if (timelapseIntervalHours && timelapseCount && timelapseDurationHours) {
+       setupTimelapseInputListeners();
+       updateDisabledState();
+       updateCalculatedValue();
+   } else {
+       console.error("Some timelapse input elements not found in the DOM");
+   }
+
+   // Check for ongoing timelapse on load (in case of page refresh)
+   startTimelapseStatusPolling(0); // Start polling, it will update state if active
 });
