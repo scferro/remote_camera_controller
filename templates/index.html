@@ -83,8 +83,8 @@
                         <div class="flex items-center mt-3">
                             <label for="preview-rate" class="mr-2">Rate (fps):</label>
                             <input type="number" id="preview-rate" value="5" min="0.1" max="10" step="0.1" class="w-input-xs py-1">
-                            <button id="btn-start-preview" class="ml-auto mr-1 text-sm py-1 px-3">Start</button>
-                            <button id="btn-stop-preview" class="text-sm py-1 px-3 danger">Stop</button>
+                            <button id="btn-start-preview" class="ml-auto mr-1 text-sm py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white">Start</button>
+                            <button id="btn-stop-preview" class="text-sm py-1 px-3 danger text-white disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop</button>
                         </div>
                     </div>
                 </div>
@@ -114,11 +114,7 @@
                       <div class="panel">
                         <h2 class="panel-title">Capture Actions</h2>
                         <div class="mb-4 pb-4 border-b border-dashed">
-                            <label for="capture-format" class="block setting-label mb-1">Capture Format (Optional Override):</label>
-                            <select id="capture-format" class="w-full">
-                                <option value="current">Use Camera's Current Setting</option>
-                                </select>
-                            <button id="btn-capture-single" class="w-full mt-3">Capture Single Image</button>
+                            <button id="btn-capture-single" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-medium">Capture Single Image</button>
                             <p id="capture-status" class="text-sm text-gray-600 mt-2">Status: Idle</p>
                         </div>
 
@@ -131,8 +127,8 @@
                             <label for="timelapse-count" class="setting-label">Number of Images:</label>
                             <input type="number" id="timelapse-count" value="100" min="1" class="w-input-sm">
                         </div>
-                        <button id="btn-start-timelapse" class="w-full mt-3">Start Timelapse</button>
-                        <button id="btn-stop-timelapse" class="w-full mt-2 danger">Stop Timelapse</button>
+                        <button id="btn-start-timelapse" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-medium">Start Timelapse</button>
+                        <button id="btn-stop-timelapse" class="w-full mt-2 danger text-white font-medium disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop Timelapse</button>
                         <div id="timelapse-status-container" class="mt-2 text-sm text-gray-600">
                             <p>Status: <span id="timelapse-status-message">Idle</span></p>
                             <p>Progress: <span id="timelapse-progress">0 / 0</span></p>
