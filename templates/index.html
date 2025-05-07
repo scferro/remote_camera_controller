@@ -34,20 +34,29 @@
         .tab-button.active { color: #3b82f6; /* blue-500 */ border-bottom-color: #3b82f6; }
         .tab-content { padding-top: 1.5rem; /* Add padding below tabs */ }
 
-        /* Updated portrait preview styles to avoid cropping -
-           the container resizes to fit the full image, which scales down if necessary */
-        .portrait-preview {
-            height: auto;
-            overflow: visible;
+        /* Preview container and image styles - Updated */
+        #preview-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3/2; /* Default aspect ratio for landscape */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+            background-color: #f3f4f6;
+            overflow: hidden; /* Prevent overflow */
+            margin-bottom: 0.75rem;
+            transition: aspect-ratio 0.3s ease; /* Smooth transition when changing orientation */
         }
-        .portrait-preview #live-preview-image {
-            width: auto;
-            height: auto;
-            max-height: 800px; /* Adjusted to fixed pixel height */
-            object-fit: scale-down;
-            display: block;
-            margin: 0 auto;
+        
+        #live-preview-image {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100%; /* Fill container width */
+            height: 100%; /* Fill container height */
+            object-fit: contain; /* Maintain aspect ratio */
         }
+        
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,16 +97,20 @@
                                 <input type="radio" name="preview-orientation" value="portrait" id="preview-portrait" class="mr-2">
                                 Portrait
                             </label>
+                            <label class="inline-flex items-center ml-4">
+                                <input type="checkbox" id="preview-flip" class="mr-2">
+                                Flip 180°
+                            </label>
                         </div>
-                        <div id="preview-container" class="relative">
+                        <div id="preview-container" class="relative bg-black">
                             <img id="live-preview-image" src="/static/previews/preview.jpg?t=0" alt="Live Preview" 
-                                 class="w-full h-auto border mb-3 bg-gray-200 min-h-[150px]" 
+                                 class="w-full h-auto bg-black min-h-[150px] hidden" 
                                  onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
                         </div>
                         <div id="preview-error" class="text-red-600 text-sm hidden">Preview failed to load.</div>
                         <div class="flex items-center mt-3">
                             <label for="preview-rate" class="mr-2">Rate (fps):</label>
-                            <input type="number" id="preview-rate" value="5" min="0.1" max="10" step="0.1" class="w-input-xs py-1">
+                            <input type="number" id="preview-rate" value="5" min="1.0" max="20.0" step="1.0" class="w-input-xs py-1">
                             <button id="btn-start-preview" class="ml-auto mr-1 text-sm py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white">Start</button>
                             <button id="btn-stop-preview" class="text-sm py-1 px-3 danger text-white disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop</button>
                         </div>
@@ -268,6 +281,36 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Portrait/Landscape toggle handlers
+            const previewLandscape = document.getElementById('preview-landscape');
+            const previewPortrait = document.getElementById('preview-portrait');
+            const previewContainer = document.getElementById('preview-container');
+            const previewFlip = document.getElementById('preview-flip');
+            
+            // Update container aspect ratio based on orientation
+            function restartPreviewWithSettings() {
+                if (isPreviewActive) {
+                    const rotation = previewPortrait.checked ? 90 : 0;
+                    const flip = previewFlip.checked;
+                    stopPreview().then(() => startPreview(rotation, flip));
+                }
+            }
+
+            if (previewLandscape && previewPortrait && previewContainer && previewFlip) {
+                previewLandscape.addEventListener('change', () => {
+                    previewContainer.style.aspectRatio = '3/2'; // Landscape ratio
+                    restartPreviewWithSettings();
+                });
+                
+                previewPortrait.addEventListener('change', () => {
+                    previewContainer.style.aspectRatio = '2/3'; // Portrait ratio
+                    restartPreviewWithSettings();
+                });
+
+                previewFlip.addEventListener('change', restartPreviewWithSettings);
+            }
+            
+            // Collapsible sections functionality
             const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
             collapsibleHeaders.forEach(header => {
                 header.addEventListener('click', () => {

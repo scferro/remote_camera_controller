@@ -15,6 +15,7 @@ const previewLandscape = document.getElementById('preview-landscape');
 const previewPortrait = document.getElementById('preview-portrait');
 const previewContainer = document.getElementById('preview-container');
 const previewRateInput = document.getElementById('preview-rate');
+const previewFlip = document.getElementById('preview-flip');  // Add this line
 
 const cameraSettingsContainer = document.getElementById('camera-settings-container');
 const captureFormatSelect = document.getElementById('capture-format');
@@ -262,62 +263,71 @@ function populateCollapsibleSettings(settings, container) {
 }
 
 // --- Live Preview ---
-async function startPreview() {
-    console.log("Starting preview...");
+async function startPreview(rotation = 0) {
+    console.log(`Starting preview with ${rotation}° rotation...`);
     if (isPreviewActive) {
         console.warn("Preview start requested but already active.");
         return;
     }
-    // Ensure buttons exist before disabling
+
+    // Show black background by removing hidden class from image container
+    if (livePreviewImage) {
+        livePreviewImage.classList.remove('hidden');
+        livePreviewImage.src = ''; // Clear any previous image
+    }
+
     if (btnStartPreview) btnStartPreview.disabled = true;
-    if (btnStopPreview) btnStopPreview.disabled = true; // Disable stop until success
+    if (btnStopPreview) btnStopPreview.disabled = true;
 
     const rate = previewRateInput ? parseFloat(previewRateInput.value) || 1.0 : 1.0;
-    previewRefreshRate = Math.max(100, 1000 / rate); // Calculate interval in ms, min 100ms
+    const flip = previewFlip ? previewFlip.checked : false;  // Add this line
+    previewRefreshRate = Math.max(100, 1000 / rate);
 
     const data = await fetchApi('/api/preview/start', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ rate: rate })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            rate: rate,
+            rotation: rotation,
+            flip: flip  // Add this line
+        })
     });
 
     if (data && data.success) {
         console.log(`Preview started backend. Refresh interval: ${previewRefreshRate}ms`);
         isPreviewActive = true;
-        if (btnStopPreview) btnStopPreview.disabled = false; // Enable stop on success
-        // Use setInterval to refresh the image source
+        if (btnStopPreview) btnStopPreview.disabled = false;
+        
         previewIntervalId = setInterval(() => {
-            // Add a timestamp to prevent browser caching
             const timestamp = new Date().getTime();
             if (livePreviewImage) {
                 livePreviewImage.src = `/static/previews/preview.jpg?t=${timestamp}`;
-                livePreviewImage.style.display = 'block'; // Ensure visible
+                livePreviewImage.style.display = 'block';
             }
-            if (previewError) previewError.classList.add('hidden'); // Hide error message
+            if (previewError) previewError.classList.add('hidden');
         }, previewRefreshRate);
-        // Handle image loading errors during preview
+
         if (livePreviewImage) {
             livePreviewImage.onerror = () => {
-                 console.error("Preview image failed to load during refresh.");
-                 if (livePreviewImage) livePreviewImage.style.display = 'none';
-                 if (previewError) previewError.classList.remove('hidden');
-                 // Consider stopping preview automatically after several errors?
-                 // stopPreview(); // Example: Stop on error
+                console.error("Preview image failed to load during refresh.");
+                if (livePreviewImage) livePreviewImage.style.display = 'none';
+                if (previewError) previewError.classList.remove('hidden');
             };
         }
-
     } else {
-         console.error("Failed to start preview on backend.");
-         alert(`Failed to start preview. ${data?.message || 'Check camera connection and logs.'}`);
-         // Ensure buttons are in correct state if start fails
-         if (btnStartPreview) btnStartPreview.disabled = false; // Re-enable start
-         if (btnStopPreview) btnStopPreview.disabled = true;
+        console.error("Failed to start preview on backend.");
+        alert(`Failed to start preview. ${data?.message || 'Check camera connection and logs.'}`);
+        if (btnStartPreview) btnStartPreview.disabled = false;
+        if (btnStopPreview) btnStopPreview.disabled = true;
     }
 }
 
-// Return a promise that resolves when stop is complete
 async function stopPreview() {
     console.log("Stopping preview...");
+    if (livePreviewImage) {
+        livePreviewImage.classList.add('hidden');  // Hide the image
+        livePreviewImage.src = '';  // Clear the source
+    }
     if (!isPreviewActive && !previewIntervalId) {
         console.log("Stop preview called but not active.");
         // Ensure buttons are correct even if called when not active
@@ -821,21 +831,23 @@ if (previewRotate) {
 }
 
 if (previewLandscape && previewPortrait) {
-   previewLandscape.addEventListener('change', () => {
-       if (livePreviewImage) {
-           livePreviewImage.style.transform = 'rotate(0deg)';
-       }
-       // Remove portrait styling if switching to landscape
-       if (previewContainer) previewContainer.classList.remove('portrait-preview');
-   });
-   previewPortrait.addEventListener('change', () => {
-       if (livePreviewImage) {
-           livePreviewImage.style.transform = 'rotate(90deg)';
-           livePreviewImage.style.transformOrigin = 'center center';
-       }
-       // Add portrait styling for proper vertical fitting
-       if (previewContainer) previewContainer.classList.add('portrait-preview');
-   });
+    previewLandscape.addEventListener('change', () => {
+        if (isPreviewActive) {
+            // Restart preview with new rotation
+            stopPreview().then(() => {
+                startPreview(0);  // 0 degrees rotation
+            });
+        }
+    });
+    
+    previewPortrait.addEventListener('change', () => {
+        if (isPreviewActive) {
+            // Restart preview with new rotation
+            stopPreview().then(() => {
+                startPreview(90);  // 90 degrees rotation
+            });
+        }
+    });
 }
 
 // Settings changes using event delegation

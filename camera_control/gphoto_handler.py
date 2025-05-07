@@ -444,9 +444,15 @@ class CameraHandler:
                  return False, f"Unexpected error: {e}"
 
 
-    def capture_preview(self, target_path):
-        """Captures a preview frame and saves it to target_path."""
-        # This function remains the same as the previous version
+    def capture_preview(self, target_path, rotation=0, flip=False):
+        """
+        Captures a preview frame and saves it to target_path with optional rotation and flip.
+        
+        Args:
+            target_path: Path where to save the preview image
+            rotation: Degrees to rotate the image (-90 for portrait)
+            flip: If True, flip the image 180 degrees
+        """
         with self.lock:
             if not self._ensure_camera_connected(): return False
 
@@ -461,12 +467,26 @@ class CameraHandler:
                         except OSError: pass
                     return False
 
-                with open(target_path, 'wb') as f:
-                    f.write(file_data)
+                try:
+                    from PIL import Image
+                    import io
+                    image = Image.open(io.BytesIO(file_data))
+                    
+                    # Apply transformations
+                    if rotation:
+                        image = image.rotate(-90, expand=True)
+                    if flip:
+                        image = image.rotate(180)
+                        
+                    image.save(target_path, "JPEG")
+                except Exception as e:
+                    log.error(f"Error processing preview image: {e}")
+                    with open(target_path, 'wb') as f:
+                        f.write(file_data)
 
                 if os.path.getsize(target_path) == 0:
-                     log.warning(f"Preview file saved but is empty: {target_path}")
-                     return False
+                    log.warning(f"Preview file saved but is empty: {target_path}")
+                    return False
 
                 return True
             except gp.GPhoto2Error as ex:
@@ -502,8 +522,15 @@ class CameraHandler:
                 log.info(f"Downloading {file_path.name} from {file_path.folder}...")
                 camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
                 log.info("Image data downloaded from camera.")
-                camera_file.save(save_path)
-                log.info(f"Image successfully saved to {save_path}")
+
+                # --- Preserve original extension ---
+                orig_ext = os.path.splitext(file_path.name)[1]
+                base_save_path, _ = os.path.splitext(save_path)
+                save_path_with_ext = base_save_path + orig_ext
+                # -----------------------------------
+
+                camera_file.save(save_path_with_ext)
+                log.info(f"Image successfully saved to {save_path_with_ext}")
 
                 try:
                     log.info(f"Attempting to delete '{file_path.name}' from camera folder '{file_path.folder}'...")
@@ -517,7 +544,7 @@ class CameraHandler:
                 # Fully disconnect the camera after the capture
                 self._release_camera()
 
-                return True, save_path
+                return True, save_path_with_ext
 
             except gp.GPhoto2Error as ex:
                 log.error(f"gphoto2 error during image capture/download: {ex.code} - {ex.string}")

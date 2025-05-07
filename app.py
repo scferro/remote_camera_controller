@@ -66,10 +66,10 @@ def get_camera():
     return camera_handler_instance
 
 # --- Helper Functions ---
-def generate_preview_frames():
+def generate_preview_frames(rotation=0):
     """Background thread function to capture preview frames."""
     global preview_rate
-    log.info(f"Preview thread started. Target rate: {preview_rate} FPS")
+    log.info(f"Preview thread started. Target rate: {preview_rate} FPS, Rotation: {rotation}°")
     cam = get_camera()
     if not cam:
         log.error("Preview thread: Camera not available.")
@@ -78,37 +78,24 @@ def generate_preview_frames():
     while not preview_active.is_set():
         start_time = time.time()
         try:
-            # Attempt to capture preview
-            success = cam.capture_preview(PREVIEW_FILE_PATH)
+            # Capture preview with rotation
+            success = cam.capture_preview(PREVIEW_FILE_PATH, rotation)
             if not success:
                 log.warning("Preview capture failed in loop.")
-                # Optional: Signal frontend about the failure?
-                # For now, just wait before retrying
-                preview_active.wait(2.0) # Use event wait, wait longer if capture fails
+                preview_active.wait(2.0)
                 continue
 
         except Exception as e:
             log.error(f"Error during preview capture: {e}", exc_info=True)
-            # Wait before retrying after an error
             preview_active.wait(2.0)
-            continue # Continue the loop
+            continue
 
-        # Calculate sleep time to maintain target frame rate
         elapsed_time = time.time() - start_time
         sleep_duration = max(0, (1.0 / preview_rate) - elapsed_time)
-        # log.debug(f"Preview captured in {elapsed_time:.3f}s, sleeping for {sleep_duration:.3f}s")
         if sleep_duration > 0:
-            preview_active.wait(sleep_duration) # Use event wait for interruptibility
+            preview_active.wait(sleep_duration)
 
     log.info("Preview thread finished.")
-    # Clean up preview file maybe? Or leave the last frame?
-    # try:
-    #     if os.path.exists(PREVIEW_FILE_PATH):
-    #         os.remove(PREVIEW_FILE_PATH)
-    #         log.info("Cleaned up preview file.")
-    # except OSError as e:
-    #     log.error(f"Error removing preview file: {e}")
-
 
 def run_timelapse(interval, count, format_override):
     """Background thread function for timelapse capture."""
@@ -299,23 +286,30 @@ def start_preview_api():
         log.warning("Preview start request received, but preview is already active.")
         return jsonify({"success": False, "message": "Preview already running."})
 
-    rate = request.json.get('rate', 1.0)
+    data = request.json or {}
+    rate = data.get('rate', 1.0)
+    rotation = data.get('rotation', 0)  # Get rotation preference (0 or 90)
+    
     try:
         preview_rate = float(rate)
         if preview_rate <= 0: raise ValueError("Rate must be positive")
     except (ValueError, TypeError):
         log.warning(f"Invalid preview rate received: {rate}. Using default {preview_rate} FPS.")
-        # Keep default rate
 
-    log.info(f"API request: /api/preview/start (Rate: {preview_rate} FPS)")
+    log.info(f"API request: /api/preview/start (Rate: {preview_rate} FPS, Rotation: {rotation}°)")
 
     cam = get_camera()
     if not cam:
          return jsonify({"success": False, "message": "Camera not available."}), 503
 
-    # Clear the stop event, set the thread, and start it
+    # Store rotation in thread context
     preview_active.clear()
-    preview_thread = threading.Thread(target=generate_preview_frames, name="PreviewThread", daemon=True)
+    preview_thread = threading.Thread(
+        target=generate_preview_frames,
+        args=(rotation,),  # Pass rotation to the preview function
+        name="PreviewThread",
+        daemon=True
+    )
     preview_thread.start()
 
     return jsonify({"success": True, "message": f"Preview started at {preview_rate} FPS."})
@@ -424,21 +418,6 @@ def list_timelapses_api():
     except Exception as e:
         log.error(f"Error listing timelapse directories: {e}", exc_info=True)
         return jsonify({"error": "Failed to list timelapse directories."}), 500
-
-
-# --- Video Endpoints (Placeholders - Very Experimental) ---
-
-@app.route('/api/video/start', methods=['POST'])
-def start_video_api():
-    log.warning("API request: /api/video/start (Experimental - Likely Unsupported)")
-    # TODO: Attempt to use gphoto2 --capture-movie if supported by camera
-    return jsonify({"success": False, "message": "Video recording via gphoto2 is generally not supported or reliable."}), 501 # Not Implemented
-
-@app.route('/api/video/stop', methods=['POST'])
-def stop_video_api():
-    log.warning("API request: /api/video/stop (Experimental)")
-    # TODO: Attempt to stop movie capture if started
-    return jsonify({"success": False, "message": "Video recording via gphoto2 is generally not supported or reliable."}), 501 # Not Implemented
 
 
 # --- Processing Endpoints (Placeholders) ---
