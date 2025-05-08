@@ -19,7 +19,7 @@ A web-based application to remotely control and manage USB-connected cameras (pr
 
 1.  **Hardware:**
     * A Raspberry Pi (or other Linux-based computer).
-    * A supported camera (tested with Sony ILCE-7M2). Check [gphoto2 camera support list](http://gphoto.org/proj/libgphoto2/support.php).
+    * A supported camera, tested with Sony A7ii (ILCE-7M2). Check [gphoto2 camera support list](http://gphoto.org/proj/libgphoto2/support.php).
     * USB cable to connect the camera.
 
 2.  **System Dependencies (Debian/Raspberry Pi OS):**
@@ -76,17 +76,6 @@ A web-based application to remotely control and manage USB-connected cameras (pr
     * **Live Control Tab:** View status, start/stop preview, change settings, capture single images, and control timelapse sequences.
     * **Timelapse Processing Tab:** View completed timelapse folders and (planned) process them into videos.
     * **Single Image Processing Tab:** (Planned) Process individual captured images.
-
-## Future Work / TODO
-
-* Implement Single Image Processing tab functionality.
-* Implement Timelapse Processing and video assembly functionality.
-* Add more robust error handling and user feedback in the UI.
-* Implement format override selection for capture.
-* Explore more advanced camera settings and controls.
-* Consider using a more robust task queue (like Celery) for long-running processing tasks instead of simple threading.
-* Improve UI/UX design.
-* Add authentication/security if exposing beyond a trusted local network.
 
 ## License
 
