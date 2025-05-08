@@ -85,49 +85,49 @@ function disableControls(disable = true) {
 // --- API Functions ---
 
 async function fetchApi(url, options = {}, showLoading = true) {
-    // Ensure options is a valid object, default to empty if not.
     const fetchOptions = (typeof options === 'object' && options !== null) ? options : {};
 
     if (showLoading) showSpinner(true);
     let responseData = null;
     try {
-        // Use the validated fetchOptions
-        console.debug(`Fetching ${url} with options:`, fetchOptions); // Added debug log
+        console.debug(`Fetching ${url} with options:`, fetchOptions);
         const response = await fetch(url, fetchOptions);
         if (!response.ok) {
             console.error(`API Error ${response.status}: ${response.statusText} for ${url}`);
+            // Handle both camera status and settings endpoints silently when camera is disconnected
+            if (url.includes('/api/camera/status') || url.includes('/api/camera/settings')) {
+                return null;
+            }
             try {
                 const errData = await response.json();
                 console.error("Error details:", errData);
-                // Avoid alert for common errors like 404 on preview image
-                if (response.status !== 404 || !url.includes('/static/previews/preview.jpg')) {
-                     alert(`API Error: ${errData.message || response.statusText}`);
+                if (!url.includes('/static/previews/preview.jpg')) {
+                    alert(`API Error: ${errData.message || response.statusText}`);
                 }
             } catch (e) {
-                 // Avoid alert for common errors like 404 on preview image
-                 if (response.status !== 404 || !url.includes('/static/previews/preview.jpg')) {
-                     alert(`API Error ${response.status}: ${response.statusText}`);
-                 }
+                if (!url.includes('/static/previews/preview.jpg')) {
+                    alert(`API Error ${response.status}: ${response.statusText}`);
+                }
             }
         } else {
-            // Check content type before assuming JSON
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.indexOf("application/json") !== -1) {
-                 responseData = await response.json();
+                responseData = await response.json();
             } else {
-                 // Handle non-JSON responses if necessary, or log a warning
-                 console.warn(`Received non-JSON response for ${url}. Content-Type: ${contentType}`);
-                 responseData = await response.text(); // Get as text instead
+                console.warn(`Received non-JSON response for ${url}. Content-Type: ${contentType}`);
+                responseData = await response.text();
             }
         }
     } catch (error) {
-        // This catch block generates the alert you were seeing
         console.error(`Network or fetch error for ${url}:`, error);
-        // Avoid alert for common errors like preview image load failure
+        // Handle both camera status and settings endpoints silently when there are errors
+        if (url.includes('/api/camera/status') || url.includes('/api/camera/settings')) {
+            return null;
+        }
         if (!url.includes('/static/previews/preview.jpg')) {
             alert(`Network or Fetch Error: ${error.message}. Is the server running?`);
         }
-        return null; // Explicitly return null on fetch error
+        return null;
     } finally {
         if (showLoading) showSpinner(false);
     }
@@ -137,40 +137,46 @@ async function fetchApi(url, options = {}, showLoading = true) {
 // --- Camera Status ---
 async function getCameraStatus() {
     console.log("Getting camera status...");
-    // Check if essential status elements exist
     if (!statusConnection || !statusModel || !statusMessage) {
         console.error("Status elements not found in DOM.");
         return;
     }
+
+    // Set initial checking state
     statusConnection.textContent = 'Checking...';
     statusModel.textContent = 'N/A';
     statusMessage.textContent = '';
-    const data = await fetchApi('/api/camera/status'); // Uses default options = {}
-    if (data) {
-        statusConnection.textContent = data.connected ? 'Connected' : 'Disconnected';
-        statusConnection.style.color = data.connected ? 'green' : 'red';
-        statusModel.textContent = data.model || 'N/A';
-        statusMessage.textContent = data.message || '';
-        // Enable/disable controls based on connection
-        const controlsShouldBeEnabled = data.connected;
-        // Check existence of buttons before setting disabled property
-        if (btnStartPreview) btnStartPreview.disabled = !controlsShouldBeEnabled || isPreviewActive;
-        if (btnStopPreview) btnStopPreview.disabled = !isPreviewActive;
-        if (btnCaptureSingle) btnCaptureSingle.disabled = !controlsShouldBeEnabled || isTimelapseActive;
-        if (btnStartTimelapse) btnStartTimelapse.disabled = !controlsShouldBeEnabled || isTimelapseActive;
-        if (btnStopTimelapse) btnStopTimelapse.disabled = !isTimelapseActive;
-    } else {
-        statusConnection.textContent = 'Error';
+
+    const data = await fetchApi('/api/camera/status');
+    
+    // Handle disconnected state (null data or failed fetch) same as explicit disconnected status
+    if (!data || !data.connected) {
+        statusConnection.textContent = 'Disconnected';
         statusConnection.style.color = 'red';
         statusModel.textContent = 'N/A';
-        statusMessage.textContent = 'Failed to get status from server.';
-        // Disable all controls on error
-        if (btnStartPreview) btnStartPreview.disabled = true;
-        if (btnStopPreview) btnStopPreview.disabled = true;
-        if (btnCaptureSingle) btnCaptureSingle.disabled = true;
-        if (btnStartTimelapse) btnStartTimelapse.disabled = true;
-        if (btnStopTimelapse) btnStopTimelapse.disabled = true;
+        statusMessage.textContent = data?.message || 'Camera not connected';
+        
+        // Disable all controls
+        const controls = [btnStartPreview, btnStopPreview, btnCaptureSingle, 
+                         btnStartTimelapse, btnStopTimelapse];
+        controls.forEach(btn => {
+            if (btn) btn.disabled = true;
+        });
+        return;
     }
+
+    // Handle connected state
+    statusConnection.textContent = 'Connected';
+    statusConnection.style.color = 'green';
+    statusModel.textContent = data.model || 'N/A';
+    statusMessage.textContent = data.message || '';
+
+    // Enable/disable controls based on active states
+    if (btnStartPreview) btnStartPreview.disabled = isPreviewActive;
+    if (btnStopPreview) btnStopPreview.disabled = !isPreviewActive;
+    if (btnCaptureSingle) btnCaptureSingle.disabled = isTimelapseActive;
+    if (btnStartTimelapse) btnStartTimelapse.disabled = isTimelapseActive;
+    if (btnStopTimelapse) btnStopTimelapse.disabled = !isTimelapseActive;
 }
 
 // --- Camera Settings ---
@@ -182,17 +188,13 @@ async function getCameraSettings() {
         return;
     }
 
-    // Save the state of open menus using a unique identifier (e.g., data-key)
-    const openMenus = new Set();
-    settingsContainer.querySelectorAll('.collapsible-header').forEach(header => {
-        const content = header.nextElementSibling;
-        if (!content.classList.contains('hidden')) {
-            openMenus.add(header.dataset.key); // Use a unique data attribute
-        }
-    });
-
     settingsContainer.innerHTML = '<p class="text-center text-gray-500">Loading settings...</p>';
     const data = await fetchApi('/api/camera/settings', {}, false);
+
+    if (!data) {
+        settingsContainer.innerHTML = '<p class="text-center text-gray-500">No settings available - camera not connected.</p>';
+        return;
+    }
 
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
         settingsContainer.innerHTML = '';
