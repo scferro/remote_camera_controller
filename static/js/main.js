@@ -804,15 +804,18 @@ function switchTab(targetTabId) {
 
 // --- Event Listeners ---
 // Ensure elements exist before adding listeners
-if (btnRefreshStatus) {
-   btnRefreshStatus.addEventListener('click', () => {
-       getCameraStatus();
-       getCameraSettings(); // Also refresh settings on manual status refresh
+if (btnRefreshSettings) {
+   btnRefreshSettings.addEventListener('click', async () => {
+       await getCameraStatus();  // Get status first
+       await getCameraSettings(); // Then refresh settings
    });
 }
-if (btnRefreshSettings) { // Added event listener for settings refresh button
-   btnRefreshSettings.addEventListener('click', getCameraSettings);
+
+// Remove the old status refresh listener since we combined them
+if (btnRefreshStatus) {
+   btnRefreshStatus.removeEventListener('click', getCameraStatus);
 }
+
 if (btnStartPreview) btnStartPreview.addEventListener('click', startPreview);
 if (btnStopPreview) btnStopPreview.addEventListener('click', stopPreview);
 if (btnCaptureSingle) btnCaptureSingle.addEventListener('click', captureSingle);
