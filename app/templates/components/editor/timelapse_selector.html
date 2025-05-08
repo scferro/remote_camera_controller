@@ -1,0 +1,31 @@
+<!-- Timelapse Selector Component -->
+<div class="timelapse-selector panel">
+    <h2 class="panel-title flex justify-between items-center">
+        Timelapses
+        <button id="btn-refresh-timelapses" class="text-sm py-1 px-3 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Refresh
+        </button>
+    </h2>
+    
+    <!-- Timelapse List -->
+    <div id="timelapse-list-container" class="mb-4">
+        <div class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
+            <ul id="timelapse-list" class="list-none text-sm">
+                <li class="text-gray-500">Loading timelapses...</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Selected Timelapse Info -->
+    <div id="timelapse-info" class="text-sm text-gray-600 mb-4 hidden">
+        <p><strong>Name:</strong> <span id="timelapse-name">-</span></p>
+        <p><strong>Frames:</strong> <span id="timelapse-frame-count">-</span></p>
+        <p><strong>Date:</strong> <span id="timelapse-date">-</span></p>
+    </div>
+    
+    <!-- Load/Save Project -->
+    <div class="mt-4 flex justify-between">
+        <button id="btn-load-project" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400">Load Project</button>
+        <button id="btn-save-project" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Save Project</button>
+    </div>
+</div>

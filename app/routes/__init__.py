@@ -17,7 +17,7 @@ import os
 # Main page route
 @main_bp.route('/')
 def index():
-    """Serves the main HTML page."""
+    """Serves the main HTML page with integrated editors."""
     current_app.logger.info("Serving index page.")
     return render_template('pages/index.html')
 

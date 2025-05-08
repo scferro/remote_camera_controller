@@ -1,6 +1,6 @@
 import logging
 import threading
-from flask import Flask, current_app
+from flask import Flask
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -34,7 +34,7 @@ def create_app():
         "folder": None
     }
     
-    # Register blueprints
+    # Register main blueprints
     from app.routes import main_bp, camera_bp, capture_bp, preview_bp, timelapse_bp, processing_bp
     
     app.register_blueprint(main_bp)
@@ -43,6 +43,13 @@ def create_app():
     app.register_blueprint(preview_bp)
     app.register_blueprint(timelapse_bp)
     app.register_blueprint(processing_bp)
+    
+    # Register editor blueprints
+    from app.routes.editor import image_editor_bp, timelapse_editor_bp, preview_bp as editor_preview_bp
+    
+    app.register_blueprint(image_editor_bp)
+    app.register_blueprint(timelapse_editor_bp)
+    app.register_blueprint(editor_preview_bp)
     
     # Initialize camera handler (with Flask 2.x compatible approach)
     from app.routes.camera import get_camera

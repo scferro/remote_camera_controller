@@ -12,21 +12,27 @@
     {% block head %}{% endblock %}
 </head>
 <body class="p-5">
-    <h1 class="text-4xl font-bold text-left mb-6 text-gray-800">{% block header %}Remote Camera Controller{% endblock %}</h1>
+    <header class="mb-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-4xl font-bold text-left text-gray-800">{% block header %}Remote Camera Controller{% endblock %}</h1>
+        </div>
+    </header>
     
+    {% if request.endpoint == 'main.index' %}
     <div class="border-b border-gray-300 mb-6">
         <nav class="flex -mb-px" aria-label="Tabs">
-            <button class="tab-button active" data-tab-target="#tab-live-control">
+            <button class="tab-button active" data-tab="tab-live-control">
                 Live Control
             </button>
-            <button class="tab-button" data-tab-target="#tab-timelapse-processing">
+            <button class="tab-button" data-tab="tab-timelapse-processing">
                 Timelapse Processing
             </button>
-            <button class="tab-button" data-tab-target="#tab-single-processing">
+            <button class="tab-button" data-tab="tab-single-processing">
                 Single Image Processing
             </button>
         </nav>
     </div>
+    {% endif %}
 
     <div id="tab-content-container">
         {% block content %}{% endblock %}

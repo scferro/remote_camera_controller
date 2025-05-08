@@ -8,10 +8,10 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
                     {% include 'components/camera_status.html' %}
-                    {% include 'components/timelapse.html' %}
+                    {% include 'components/capture.html' %}
                 </div>
                 <div>
-                    {% include 'components/preview.html' %}
+                    {% include 'components/live_preview.html' %}
                 </div>
             </div>
         </div>
@@ -19,63 +19,205 @@
 
     <div id="tab-timelapse-processing" class="tab-content hidden">
         <div class="panel">
-            <h2 class="panel-title">Timelapse Processing & Assembly</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-1">
-                    <h3 class="text-lg font-semibold mb-2">Available Timelapses:</h3>
-                    <div id="timelapse-list-container" class="mb-4">
-                        <div class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
-                            <ul id="timelapse-list" class="list-disc pl-5 text-sm">
-                                <li>Loading...</li>
-                            </ul>
+            <h2 class="panel-title">Timelapse Processing & Editor</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- Timelapse Selector - 1/5 width on large screens -->
+                <div class="lg:col-span-1">
+                    {% include 'components/editor/timelapse_selector.html' %}
+                    
+                    <!-- Batch Edit Settings Panel -->
+                    <div class="panel mt-6">
+                        <h2 class="panel-title">Batch Edit Settings</h2>
+                        
+                        <!-- Frame Range -->
+                        <div class="setting-group">
+                            <label class="setting-label">Frame Range</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-xs">Start</label>
+                                    <input type="number" id="batch-start-frame" class="w-full" min="0" value="0" disabled>
+                                </div>
+                                <div>
+                                    <label class="text-xs">End</label>
+                                    <input type="number" id="batch-end-frame" class="w-full" min="0" value="0" disabled>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <label class="text-xs">Interval (process every Nth frame)</label>
+                                <input type="number" id="batch-interval" class="w-full" min="1" value="1" disabled>
+                            </div>
                         </div>
-                        <button id="btn-refresh-timelapses" class="mt-3 text-sm py-1 px-3">Refresh List</button>
+                        
+                        <!-- Crop Settings -->
+                        <div class="setting-group">
+                            <label class="setting-label">Crop (applies to all frames)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-xs">Left</label>
+                                    <input type="number" id="batch-crop-left" class="w-full" min="0" disabled>
+                                </div>
+                                <div>
+                                    <label class="text-xs">Top</label>
+                                    <input type="number" id="batch-crop-top" class="w-full" min="0" disabled>
+                                </div>
+                                <div>
+                                    <label class="text-xs">Right</label>
+                                    <input type="number" id="batch-crop-right" class="w-full" min="0" disabled>
+                                </div>
+                                <div>
+                                    <label class="text-xs">Bottom</label>
+                                    <input type="number" id="batch-crop-bottom" class="w-full" min="0" disabled>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex justify-center">
+                                <button id="btn-crop-from-current" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Use Current Frame</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Adjustment Settings -->
+                        <div class="setting-group">
+                            <label class="setting-label">Adjustments (applies to all frames)</label>
+                            
+                            <!-- Brightness -->
+                            <div class="mb-2">
+                                <label class="text-xs">Brightness</label>
+                                <div class="flex items-center">
+                                    <input type="range" id="batch-brightness-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>0.0</span>
+                                    <span id="batch-brightness-value">1.0</span>
+                                    <span>2.0</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Contrast -->
+                            <div class="mb-2">
+                                <label class="text-xs">Contrast</label>
+                                <div class="flex items-center">
+                                    <input type="range" id="batch-contrast-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>0.0</span>
+                                    <span id="batch-contrast-value">1.0</span>
+                                    <span>2.0</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Saturation -->
+                            <div class="mb-2">
+                                <label class="text-xs">Saturation</label>
+                                <div class="flex items-center">
+                                    <input type="range" id="batch-saturation-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>0.0</span>
+                                    <span id="batch-saturation-value">1.0</span>
+                                    <span>2.0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Apply Batch Edit -->
+                        <button id="btn-apply-batch-edit" class="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium disabled:opacity-50" disabled>Apply Batch Edit</button>
                     </div>
                 </div>
-                <div class="md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-2">Processing Options for <span id="selected-timelapse-name" class="text-blue-600">None</span></h3>
-                    <div id="timelapse-processor" class="space-y-4">
-                        <p id="timelapse-select-prompt" class="text-gray-500">Select a timelapse sequence from the list to process.</p>
-                        <div id="timelapse-options-panel" class="hidden space-y-4">
-                            <fieldset class="border p-3 rounded">
-                                <legend class="text-base font-medium px-1">RAW Processing (if applicable)</legend>
-                                <div class="setting-group">
-                                    <label class="setting-label"><input type="checkbox" id="tl-process-raw" checked> Process RAW files (if present)</label>
-                                </div>
-                                <div class="setting-group">
-                                    <label class="setting-label"><input type="checkbox" id="tl-use-camera-wb" checked> Use Camera White Balance</label>
-                                </div>
-                                <div class="setting-group">
-                                    <label for="tl-brightness" class="setting-label">Brightness/Exposure:</label>
-                                    <input type="range" id="tl-brightness" min="0.25" max="4.0" step="0.05" value="1.0" class="w-full">
-                                    <span class="text-xs">(Value: <span id="tl-brightness-value">1.0</span>)</span>
-                                </div>
-                            </fieldset>
-
-                            <fieldset class="border p-3 rounded">
-                                <legend class="text-base font-medium px-1">Video Assembly</legend>
-                                <div class="setting-group">
-                                    <label for="tl-fps" class="setting-label">Frame Rate (FPS):</label>
-                                    <input type="number" id="tl-fps" value="24" min="1" max="60" class="w-input-sm">
-                                </div>
-                                <div class="setting-group">
-                                    <label for="tl-resolution" class="setting-label">Resolution (e.g., 1920x1080, leave blank for original):</label>
-                                    <input type="text" id="tl-resolution" placeholder="Optional" class="w-input-md">
-                                </div>
-                                <div class="setting-group">
-                                    <label class="setting-label">Crop (X, Y, Width, Height - Optional):</label>
-                                    <div class="flex space-x-2">
-                                        <input type="number" id="tl-crop-x" placeholder="X" class="w-input-xs">
-                                        <input type="number" id="tl-crop-y" placeholder="Y" class="w-input-xs">
-                                        <input type="number" id="tl-crop-w" placeholder="W" class="w-input-xs">
-                                        <input type="number" id="tl-crop-h" placeholder="H" class="w-input-xs">
+                
+                <!-- Timelapse Preview & Controls - 3/5 width on large screens -->
+                <div class="lg:col-span-3">
+                    {% include 'components/editor/timelapse_scrubber.html' %}
+                    
+                    <!-- Processing Options Panel -->
+                    <div id="timelapse-processing-options" class="panel mt-6">
+                        <h2 class="panel-title">Processing Options for <span id="selected-timelapse-name" class="text-blue-600">None</span></h2>
+                        <div id="timelapse-processor" class="space-y-4">
+                            <p id="timelapse-select-prompt" class="text-gray-500">Select a timelapse sequence to process.</p>
+                            <div id="timelapse-options-panel" class="hidden space-y-4">
+                                <fieldset class="border p-3 rounded">
+                                    <legend class="text-base font-medium px-1">RAW Processing (if applicable)</legend>
+                                    <div class="setting-group">
+                                        <label class="setting-label"><input type="checkbox" id="tl-process-raw" checked> Process RAW files (if present)</label>
                                     </div>
-                                </div>
-                            </fieldset>
+                                    <div class="setting-group">
+                                        <label class="setting-label"><input type="checkbox" id="tl-use-camera-wb" checked> Use Camera White Balance</label>
+                                    </div>
+                                    <div class="setting-group">
+                                        <label for="tl-brightness" class="setting-label">Brightness/Exposure:</label>
+                                        <input type="range" id="tl-brightness" min="0.25" max="4.0" step="0.05" value="1.0" class="w-full">
+                                        <span class="text-xs">(Value: <span id="tl-brightness-value">1.0</span>)</span>
+                                    </div>
+                                </fieldset>
 
-                            <button id="btn-assemble-timelapse" class="button mt-4">Assemble Video</button>
-                            <p id="timelapse-assembly-status" class="text-sm mt-2"></p>
+                                <fieldset class="border p-3 rounded">
+                                    <legend class="text-base font-medium px-1">Video Assembly</legend>
+                                    <div class="setting-group">
+                                        <label for="tl-fps" class="setting-label">Frame Rate (FPS):</label>
+                                        <input type="number" id="tl-fps" value="24" min="1" max="60" class="w-input-sm">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label for="tl-resolution" class="setting-label">Resolution (e.g., 1920x1080, leave blank for original):</label>
+                                        <input type="text" id="tl-resolution" placeholder="Optional" class="w-input-md">
+                                    </div>
+                                    <div class="setting-group">
+                                        <label class="setting-label">Crop (X, Y, Width, Height - Optional):</label>
+                                        <div class="flex space-x-2">
+                                            <input type="number" id="tl-crop-x" placeholder="X" class="w-input-xs">
+                                            <input type="number" id="tl-crop-y" placeholder="Y" class="w-input-xs">
+                                            <input type="number" id="tl-crop-w" placeholder="W" class="w-input-xs">
+                                            <input type="number" id="tl-crop-h" placeholder="H" class="w-input-xs">
+                                        </div>
+                                    </div>
+                                </fieldset>
+
+                                <button id="btn-assemble-timelapse" class="button mt-4">Assemble Video</button>
+                                <p id="timelapse-assembly-status" class="text-sm mt-2"></p>
+                            </div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- Timelapse Video Assembly - 1/5 width on large screens -->
+                <div class="lg:col-span-1">
+                    <div class="panel">
+                        <h2 class="panel-title">Video Export</h2>
+                        
+                        <!-- Output Format -->
+                        <div class="setting-group">
+                            <label class="setting-label">Output Format</label>
+                            <select id="video-format" class="w-full" disabled>
+                                <option value="mp4">MP4</option>
+                                <option value="mov">MOV</option>
+                                <option value="avi">AVI</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Quality -->
+                        <div class="setting-group">
+                            <label class="setting-label">Quality</label>
+                            <select id="video-quality" class="w-full" disabled>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Use Edited Frames -->
+                        <div class="setting-group">
+                            <label class="setting-label">Use Edited Frames</label>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="use-edited-frames" class="mr-2" checked disabled>
+                                <label class="text-sm">Use edited frames if available</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Output Filename -->
+                        <div class="setting-group">
+                            <label class="setting-label">Output Filename</label>
+                            <input type="text" id="video-filename" class="w-full" placeholder="auto-generated" disabled>
+                        </div>
+                        
+                        <!-- Export Button -->
+                        <button id="btn-export-video" class="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-medium disabled:opacity-50" disabled>Export Video</button>
                     </div>
                 </div>
             </div>
@@ -84,10 +226,22 @@
 
     <div id="tab-single-processing" class="tab-content hidden">
         <div class="panel">
-            <h2 class="panel-title">Single Image Processing</h2>
-            <div id="single-image-processor">
-                <p class="text-gray-500">Functionality not yet implemented.</p>
-                <p class="text-gray-500 mt-2">Future: Select image (from captures/timelapses or upload), apply RAW settings, save processed version.</p>
+            <h2 class="panel-title">Image Processing & Editor</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- Image Selector - 1/5 width on large screens -->
+                <div class="lg:col-span-1">
+                    {% include 'components/editor/image_selector.html' %}
+                </div>
+                
+                <!-- Image Preview & Controls - 3/5 width on large screens -->
+                <div class="lg:col-span-3">
+                    {% include 'components/editor/image_preview.html' %}
+                </div>
+                
+                <!-- Image Edit Settings - 1/5 width on large screens -->
+                <div class="lg:col-span-1">
+                    {% include 'components/editor/edit_settings_panel.html' %}
+                </div>
             </div>
         </div>
     </div>
@@ -98,4 +252,86 @@
 <script src="{{ url_for('static', filename='js/preview.js') }}"></script>
 <script src="{{ url_for('static', filename='js/timelapse.js') }}"></script>
 <script src="{{ url_for('static', filename='js/processing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor_loader.js') }}"></script>
+
+<!-- Modal for metadata -->
+<div id="metadata-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Image Metadata</h3>
+            <button id="close-metadata-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <div id="metadata-content" class="text-sm">
+            <p class="text-center text-gray-500">Loading metadata...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for rotating image -->
+<div id="rotate-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Rotate Image</h3>
+            <button id="close-rotate-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <div class="mb-4">
+            <label class="setting-label">Rotation Angle</label>
+            <div class="flex items-center">
+                <input type="range" id="rotation-slider" min="0" max="360" step="90" value="0" class="w-full">
+            </div>
+            <div class="flex justify-between text-sm mt-1">
+                <span>0°</span>
+                <span>90°</span>
+                <span>180°</span>
+                <span>270°</span>
+                <span>360°</span>
+            </div>
+            <div class="text-center mt-2">
+                <span id="rotation-value" class="text-lg font-medium">0°</span>
+            </div>
+        </div>
+        <div class="flex justify-end">
+            <button id="btn-apply-rotation" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- Video Assembly Modal -->
+<div id="assemble-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Assemble Video</h3>
+            <button id="close-assemble-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        
+        <div class="mb-4">
+            <div class="setting-group">
+                <label class="setting-label">Frame Rate (FPS)</label>
+                <input type="number" id="video-fps" class="w-full" min="1" max="60" value="24">
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Output Format</label>
+                <select id="video-format-modal" class="w-full">
+                    <option value="mp4">MP4</option>
+                    <option value="mov">MOV</option>
+                    <option value="avi">AVI</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Quality</label>
+                <select id="video-quality-modal" class="w-full">
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="flex justify-end">
+            <button id="btn-start-assembly" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Assemble</button>
+        </div>
+    </div>
+</div>
 {% endblock %}

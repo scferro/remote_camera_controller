@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Timelapse Editor - Remote Camera Controller{% endblock %}
+
+{% block header %}Timelapse Editor{% endblock %}
+
+{% block content %}
+<div class="timelapse-editor-container grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <!-- Timelapse Selector Panel - 1/5 width on large screens -->
+    <div class="lg:col-span-1">
+        <div class="panel">
+            <h2 class="panel-title flex justify-between items-center">
+                Timelapses
+                <button id="btn-refresh-timelapses" class="text-sm py-1 px-3 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Refresh
+                </button>
+            </h2>
+            
+            <!-- Timelapse List -->
+            <div id="timelapse-list-container" class="mb-4">
+                <div class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
+                    <ul id="timelapse-list" class="list-none text-sm">
+                        <li class="text-gray-500">Loading...</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Selected Timelapse Info -->
+            <div id="timelapse-info" class="text-sm text-gray-600 mb-4 hidden">
+                <p><strong>Name:</strong> <span id="timelapse-name">-</span></p>
+                <p><strong>Frames:</strong> <span id="timelapse-frame-count">-</span></p>
+                <p><strong>Date:</strong> <span id="timelapse-date">-</span></p>
+            </div>
+            
+            <!-- Load/Save Project -->
+            <div class="mt-4 flex justify-between">
+                <button id="btn-load-project" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400">Load Project</button>
+                <button id="btn-save-project" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Save Project</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Frame Preview & Scrubber - 3/5 width on large screens -->
+    <div class="lg:col-span-3">
+        <div class="panel">
+            <h2 class="panel-title flex justify-between items-center">
+                <span id="frame-number">No Timelapse Selected</span>
+                <div>
+                    <button id="btn-extract-frame" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Extract Frame</button>
+                </div>
+            </h2>
+            
+            <!-- Frame Preview Area -->
+            <div id="frame-preview-container" class="relative mb-4 border rounded flex justify-center items-center bg-gray-900 min-h-[300px]">
+                <img id="frame-preview" src="" alt="Frame Preview" class="max-w-full max-h-[500px] hidden">
+                <div id="frame-placeholder" class="text-white text-center p-10">
+                    Select a timelapse to view frames
+                </div>
+                <div id="frame-loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p class="text-white mt-2">Loading...</p>
+                </div>
+            </div>
+            
+            <!-- Timeline Scrubber -->
+            <div id="timelapse-scrubber" class="mb-4 hidden">
+                <div class="flex items-center mb-2">
+                    <button id="btn-prev-frame" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 mr-2">
+                        <span class="text-lg">←</span>
+                    </button>
+                    <div class="flex-grow">
+                        <input type="range" id="frame-slider" min="0" max="100" value="0" class="w-full">
+                    </div>
+                    <button id="btn-next-frame" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 ml-2">
+                        <span class="text-lg">→</span>
+                    </button>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500">
+                    <span>Frame 1</span>
+                    <span id="current-frame-number">-</span>
+                    <span id="last-frame-number">-</span>
+                </div>
+                
+                <!-- Thumbnail Strip -->
+                <div class="mt-4 border rounded bg-gray-100 p-2">
+                    <div id="thumbnail-strip" class="flex overflow-x-auto py-1 min-h-[80px]">
+                        <div class="text-gray-500 text-center py-4 w-full">Thumbnails will appear here</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex justify-between">
+                <button id="btn-generate-previews" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Generate Previews</button>
+                <button id="btn-assemble-video" class="text-sm py-1 px-3 bg-green-500 hover:bg-green-600 text-white disabled:opacity-50" disabled>Assemble Video</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Batch Edit Settings Panel - 1/5 width on large screens -->
+    <div class="lg:col-span-1">
+        <div class="panel">
+            <h2 class="panel-title">Batch Edit Settings</h2>
+            
+            <!-- Frame Range -->
+            <div class="setting-group">
+                <label class="setting-label">Frame Range</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs">Start</label>
+                        <input type="number" id="batch-start-frame" class="w-full" min="0" value="0" disabled>
+                    </div>
+                    <div>
+                        <label class="text-xs">End</label>
+                        <input type="number" id="batch-end-frame" class="w-full" min="0" value="0" disabled>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <label class="text-xs">Interval (process every Nth frame)</label>
+                    <input type="number" id="batch-interval" class="w-full" min="1" value="1" disabled>
+                </div>
+            </div>
+            
+            <!-- Crop Settings -->
+            <div class="setting-group">
+                <label class="setting-label">Crop (applies to all frames)</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs">Left</label>
+                        <input type="number" id="batch-crop-left" class="w-full" min="0" disabled>
+                    </div>
+                    <div>
+                        <label class="text-xs">Top</label>
+                        <input type="number" id="batch-crop-top" class="w-full" min="0" disabled>
+                    </div>
+                    <div>
+                        <label class="text-xs">Right</label>
+                        <input type="number" id="batch-crop-right" class="w-full" min="0" disabled>
+                    </div>
+                    <div>
+                        <label class="text-xs">Bottom</label>
+                        <input type="number" id="batch-crop-bottom" class="w-full" min="0" disabled>
+                    </div>
+                </div>
+                <div class="mt-2 flex justify-center">
+                    <button id="btn-crop-from-current" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Use Current Frame</button>
+                </div>
+            </div>
+            
+            <!-- Adjustment Settings -->
+            <div class="setting-group">
+                <label class="setting-label">Adjustments (applies to all frames)</label>
+                
+                <!-- Brightness -->
+                <div class="mb-2">
+                    <label class="text-xs">Brightness</label>
+                    <div class="flex items-center">
+                        <input type="range" id="batch-brightness-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>0.0</span>
+                        <span id="batch-brightness-value">1.0</span>
+                        <span>2.0</span>
+                    </div>
+                </div>
+                
+                <!-- Contrast -->
+                <div class="mb-2">
+                    <label class="text-xs">Contrast</label>
+                    <div class="flex items-center">
+                        <input type="range" id="batch-contrast-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>0.0</span>
+                        <span id="batch-contrast-value">1.0</span>
+                        <span>2.0</span>
+                    </div>
+                </div>
+                
+                <!-- Saturation -->
+                <div class="mb-2">
+                    <label class="text-xs">Saturation</label>
+                    <div class="flex items-center">
+                        <input type="range" id="batch-saturation-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>0.0</span>
+                        <span id="batch-saturation-value">1.0</span>
+                        <span>2.0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Apply Batch Edit -->
+            <button id="btn-apply-batch-edit" class="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium disabled:opacity-50" disabled>Apply Batch Edit</button>
+        </div>
+    </div>
+</div>
+
+<!-- Video Assembly Modal -->
+<div id="assemble-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Assemble Video</h3>
+            <button id="close-assemble-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        
+        <div class="mb-4">
+            <div class="setting-group">
+                <label class="setting-label">Frame Rate (FPS)</label>
+                <input type="number" id="video-fps" class="w-full" min="1" max="60" value="24">
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Output Format</label>
+                <select id="video-format" class="w-full">
+                    <option value="mp4">MP4</option>
+                    <option value="mov">MOV</option>
+                    <option value="avi">AVI</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Quality</label>
+                <select id="video-quality" class="w-full">
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Use Edited Frames</label>
+                <div class="flex items-center">
+                    <input type="checkbox" id="use-edited-frames" class="mr-2" checked>
+                    <label class="text-sm">Use edited frames if available</label>
+                </div>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Output Filename</label>
+                <input type="text" id="video-filename" class="w-full" placeholder="auto-generated">
+            </div>
+        </div>
+        
+        <div class="flex justify-end">
+            <button id="btn-start-assembly" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Assemble</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/editor_loader.js') }}"></script>
+{% endblock %}

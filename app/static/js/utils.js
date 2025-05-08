@@ -81,6 +81,10 @@ async function fetchApi(url, options = {}, showLoading = true) {
 // Tab switching functionality
 function switchTab(targetTabId) {
     console.debug(`Switching to tab: ${targetTabId}`);
+    
+    // Add # prefix if not already included
+    const targetSelector = targetTabId.startsWith('#') ? targetTabId : `#${targetTabId}`;
+    
     // Hide all content panels
     document.querySelectorAll('.tab-content').forEach(content => {
         if (content) content.classList.add('hidden');
@@ -92,15 +96,15 @@ function switchTab(targetTabId) {
     });
 
     // Show the target content panel
-    const targetContent = document.querySelector(targetTabId);
+    const targetContent = document.querySelector(targetSelector);
     if (targetContent) {
         targetContent.classList.remove('hidden');
     } else {
-        console.error(`Tab content not found for target: ${targetTabId}`);
+        console.error(`Tab content not found for target: ${targetSelector}`);
     }
 
     // Activate the target tab button
-    const targetButton = document.querySelector(`[data-tab-target="${targetTabId}"]`);
+    const targetButton = document.querySelector(`[data-tab="${targetTabId.replace('#', '')}"]`);
     if (targetButton) {
         targetButton.classList.add('active');
     } else {
@@ -108,9 +112,20 @@ function switchTab(targetTabId) {
     }
 
     // Stop preview if switching away from the live control tab
-    if (targetTabId !== '#tab-live-control' && window.isPreviewActive) {
+    if (targetSelector !== '#tab-live-control' && window.isPreviewActive) {
         console.log("Switching tab away from Live Control, stopping preview.");
         window.stopPreview(); // Call async function but don't wait for it here
+    }
+    
+    // Initialize editors when switching to those tabs
+    if (targetSelector === '#tab-single-processing') {
+        if (window.initImageEditor && typeof window.initImageEditor === 'function') {
+            window.initImageEditor();
+        }
+    } else if (targetSelector === '#tab-timelapse-processing') {
+        if (window.initTimelapseEditor && typeof window.initTimelapseEditor === 'function') {
+            window.initTimelapseEditor();
+        }
     }
 }
 
@@ -120,11 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-button').forEach(button => {
         if (button) {
             button.addEventListener('click', () => {
-                const targetTabId = button.getAttribute('data-tab-target');
+                const targetTabId = button.getAttribute('data-tab');
                 if (targetTabId) {
                     switchTab(targetTabId);
                 } else {
-                    console.error("Tab button clicked but missing data-tab-target attribute.");
+                    console.error("Tab button clicked but missing data-tab attribute.");
                 }
             });
         }
@@ -134,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     if (tabButtons.length > 0 && tabContents.length > 0) {
-        switchTab('#tab-live-control');
+        switchTab('tab-live-control');
     } else {
         console.error("Tab buttons or content panels not found on DOM load.");
     }

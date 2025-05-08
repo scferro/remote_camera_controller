@@ -1,0 +1,92 @@
+<!-- Edit Settings Panel Component -->
+<div class="edit-settings-panel panel">
+    <h2 class="panel-title">Adjustments</h2>
+    
+    <!-- Brightness -->
+    <div class="setting-group">
+        <label class="setting-label">Brightness</label>
+        <div class="flex items-center">
+            <input type="range" id="brightness-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+        </div>
+        <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>0.0</span>
+            <span id="brightness-value">1.0</span>
+            <span>2.0</span>
+        </div>
+    </div>
+    
+    <!-- Contrast -->
+    <div class="setting-group">
+        <label class="setting-label">Contrast</label>
+        <div class="flex items-center">
+            <input type="range" id="contrast-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+        </div>
+        <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>0.0</span>
+            <span id="contrast-value">1.0</span>
+            <span>2.0</span>
+        </div>
+    </div>
+    
+    <!-- Saturation -->
+    <div class="setting-group">
+        <label class="setting-label">Saturation</label>
+        <div class="flex items-center">
+            <input type="range" id="saturation-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+        </div>
+        <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>0.0</span>
+            <span id="saturation-value">1.0</span>
+            <span>2.0</span>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="setting-group">
+        <label class="setting-label">Filters</label>
+        <select id="filter-select" class="w-full" disabled>
+            <option value="">None</option>
+            <option value="blur">Blur</option>
+            <option value="sharpen">Sharpen</option>
+            <option value="contour">Contour</option>
+            <option value="edge_enhance">Edge Enhance</option>
+            <option value="smooth">Smooth</option>
+            <option value="detail">Detail</option>
+        </select>
+    </div>
+    
+    <!-- Output Format -->
+    <div class="setting-group">
+        <label class="setting-label">Output Format</label>
+        <select id="format-select" class="w-full" disabled>
+            <option value="JPEG">JPEG</option>
+            <option value="PNG">PNG</option>
+            <option value="TIFF">TIFF</option>
+        </select>
+    </div>
+    
+    <!-- Quality (for JPEG) -->
+    <div id="quality-control" class="setting-group">
+        <label class="setting-label">Quality</label>
+        <div class="flex items-center">
+            <input type="range" id="quality-slider" min="1" max="100" step="1" value="95" class="w-full" disabled>
+        </div>
+        <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>1</span>
+            <span id="quality-value">95</span>
+            <span>100</span>
+        </div>
+    </div>
+    
+    <!-- Output Path -->
+    <div class="setting-group">
+        <label class="setting-label">Output Filename</label>
+        <input type="text" id="output-filename" class="w-full" placeholder="auto-generated" disabled>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="flex justify-between mt-4">
+        <button id="btn-reset" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Reset</button>
+        <button id="btn-save" class="text-sm py-1 px-3 bg-green-500 hover:bg-green-600 text-white disabled:opacity-50" disabled>Save</button>
+    </div>
+</div>

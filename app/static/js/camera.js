@@ -23,12 +23,22 @@ async function getCameraStatus() {
         return;
     }
 
+    // Get spinner element
+    const statusSpinner = document.getElementById('status-spinner');
+
     // Set initial checking state
     statusConnection.textContent = 'Checking...';
     statusModel.textContent = 'N/A';
     statusMessage.textContent = '';
+    
+    // Show spinner while checking
+    if (statusSpinner) statusSpinner.classList.remove('hidden');
 
-    const data = await fetchApi('/api/camera/status');
+    // Use false for showLoading to avoid double spinner handling
+    const data = await fetchApi('/api/camera/status', {}, false);
+    
+    // Hide spinner now that we have a response (or error)
+    if (statusSpinner) statusSpinner.classList.add('hidden');
     
     // Handle disconnected state (null data or failed fetch) same as explicit disconnected status
     if (!data || !data.connected) {
@@ -94,11 +104,6 @@ async function getCameraSettings() {
 
     cameraSettingsCollapsible.innerHTML = '<p class="text-center text-gray-500">Loading settings...</p>';
     const data = await fetchApi('/api/camera/settings', {}, false);
-
-    if (!data) {
-        cameraSettingsCollapsible.innerHTML = '<p class="text-center text-gray-500">No settings available - camera not connected.</p>';
-        return;
-    }
 
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
         cameraSettingsCollapsible.innerHTML = '';

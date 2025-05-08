@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Image Editor - Remote Camera Controller{% endblock %}
+
+{% block header %}Image Editor{% endblock %}
+
+{% block content %}
+<div class="image-editor-container grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <!-- Image Selector Panel - 1/5 width on large screens -->
+    <div class="lg:col-span-1">
+        <div class="panel">
+            <h2 class="panel-title flex justify-between items-center">
+                Images
+                <button id="btn-refresh-images" class="text-sm py-1 px-3 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Refresh
+                </button>
+            </h2>
+            
+            <!-- Image Browser -->
+            <div id="image-browser" class="mb-4">
+                <div class="flex items-center mb-2">
+                    <button id="btn-parent-dir" class="text-sm py-1 px-2 mr-2" disabled>
+                        <span class="text-lg">↑</span> Parent
+                    </button>
+                    <span id="current-path" class="text-sm text-gray-600 truncate">Loading...</span>
+                </div>
+                
+                <div id="directory-list" class="max-h-40 overflow-y-auto border rounded p-2 mb-2 bg-gray-50">
+                    <ul class="list-none text-sm">
+                        <li class="text-gray-500">Loading...</li>
+                    </ul>
+                </div>
+                
+                <div id="image-list" class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
+                    <div class="grid grid-cols-3 gap-2 image-thumbnails">
+                        <div class="text-gray-500 col-span-3 text-center py-4">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image Preview & Tools - 3/5 width on large screens -->
+    <div class="lg:col-span-3">
+        <div class="panel">
+            <h2 class="panel-title flex justify-between items-center">
+                <span id="image-name">No Image Selected</span>
+                <div>
+                    <button id="btn-undo" class="text-sm py-1 px-3 mr-1 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Undo</button>
+                    <button id="btn-reset" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Reset</button>
+                </div>
+            </h2>
+            
+            <!-- Image Preview Area -->
+            <div id="preview-container" class="relative mb-4 border rounded flex justify-center items-center bg-gray-900 min-h-[300px]">
+                <img id="image-preview" src="" alt="Preview" class="max-w-full max-h-[500px] hidden">
+                <div id="preview-placeholder" class="text-white text-center p-10">
+                    Select an image to edit
+                </div>
+                <div id="preview-loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p class="text-white mt-2">Loading...</p>
+                </div>
+            </div>
+            
+            <!-- Crop Controls -->
+            <div id="crop-controls" class="mb-4 hidden">
+                <div class="border rounded p-3 bg-gray-50">
+                    <h3 class="font-medium mb-2">Crop</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="setting-label">Left</label>
+                            <input type="number" id="crop-left" class="w-full" min="0">
+                        </div>
+                        <div>
+                            <label class="setting-label">Top</label>
+                            <input type="number" id="crop-top" class="w-full" min="0">
+                        </div>
+                        <div>
+                            <label class="setting-label">Right</label>
+                            <input type="number" id="crop-right" class="w-full" min="0">
+                        </div>
+                        <div>
+                            <label class="setting-label">Bottom</label>
+                            <input type="number" id="crop-bottom" class="w-full" min="0">
+                        </div>
+                    </div>
+                    <div class="mt-2 flex justify-between">
+                        <button id="btn-crop-preview" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400">Preview</button>
+                        <button id="btn-apply-crop" class="text-sm py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white">Apply Crop</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex justify-between">
+                <div>
+                    <button id="btn-toggle-crop" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Crop</button>
+                    <button id="btn-rotate" class="text-sm py-1 px-3 bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Rotate</button>
+                </div>
+                <div>
+                    <button id="btn-save" class="text-sm py-1 px-3 bg-green-500 hover:bg-green-600 text-white disabled:opacity-50" disabled>Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Panel - 1/5 width on large screens -->
+    <div class="lg:col-span-1">
+        <div class="panel">
+            <h2 class="panel-title">Adjustments</h2>
+            
+            <!-- Brightness -->
+            <div class="setting-group">
+                <label class="setting-label">Brightness</label>
+                <div class="flex items-center">
+                    <input type="range" id="brightness-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0.0</span>
+                    <span id="brightness-value">1.0</span>
+                    <span>2.0</span>
+                </div>
+            </div>
+            
+            <!-- Contrast -->
+            <div class="setting-group">
+                <label class="setting-label">Contrast</label>
+                <div class="flex items-center">
+                    <input type="range" id="contrast-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0.0</span>
+                    <span id="contrast-value">1.0</span>
+                    <span>2.0</span>
+                </div>
+            </div>
+            
+            <!-- Saturation -->
+            <div class="setting-group">
+                <label class="setting-label">Saturation</label>
+                <div class="flex items-center">
+                    <input type="range" id="saturation-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full" disabled>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0.0</span>
+                    <span id="saturation-value">1.0</span>
+                    <span>2.0</span>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="setting-group">
+                <label class="setting-label">Filters</label>
+                <select id="filter-select" class="w-full" disabled>
+                    <option value="">None</option>
+                    <option value="blur">Blur</option>
+                    <option value="sharpen">Sharpen</option>
+                    <option value="contour">Contour</option>
+                    <option value="edge_enhance">Edge Enhance</option>
+                    <option value="smooth">Smooth</option>
+                    <option value="detail">Detail</option>
+                </select>
+            </div>
+            
+            <!-- Output Format -->
+            <div class="setting-group">
+                <label class="setting-label">Output Format</label>
+                <select id="format-select" class="w-full" disabled>
+                    <option value="JPEG">JPEG</option>
+                    <option value="PNG">PNG</option>
+                    <option value="TIFF">TIFF</option>
+                </select>
+            </div>
+            
+            <!-- Quality (for JPEG) -->
+            <div id="quality-control" class="setting-group">
+                <label class="setting-label">Quality</label>
+                <div class="flex items-center">
+                    <input type="range" id="quality-slider" min="1" max="100" step="1" value="95" class="w-full" disabled>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>1</span>
+                    <span id="quality-value">95</span>
+                    <span>100</span>
+                </div>
+            </div>
+            
+            <!-- Output Path -->
+            <div class="setting-group">
+                <label class="setting-label">Output Filename</label>
+                <input type="text" id="output-filename" class="w-full" placeholder="auto-generated" disabled>
+            </div>
+            
+            <!-- Metadata -->
+            <div class="setting-group">
+                <button id="btn-show-metadata" class="w-full bg-gray-300 hover:bg-gray-400 disabled:opacity-50" disabled>Show Metadata</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for metadata -->
+<div id="metadata-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Image Metadata</h3>
+            <button id="close-metadata-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <div id="metadata-content" class="text-sm">
+            <p class="text-center text-gray-500">Loading metadata...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for rotating image -->
+<div id="rotate-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Rotate Image</h3>
+            <button id="close-rotate-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <div class="mb-4">
+            <label class="setting-label">Rotation Angle</label>
+            <div class="flex items-center">
+                <input type="range" id="rotation-slider" min="0" max="360" step="90" value="0" class="w-full">
+            </div>
+            <div class="flex justify-between text-sm mt-1">
+                <span>0°</span>
+                <span>90°</span>
+                <span>180°</span>
+                <span>270°</span>
+                <span>360°</span>
+            </div>
+            <div class="text-center mt-2">
+                <span id="rotation-value" class="text-lg font-medium">0°</span>
+            </div>
+        </div>
+        <div class="flex justify-end">
+            <button id="btn-apply-rotation" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">Apply</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/editor_loader.js') }}"></script>
+{% endblock %}

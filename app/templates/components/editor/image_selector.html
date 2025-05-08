@@ -1,0 +1,31 @@
+<!-- Image Selector Component -->
+<div class="image-selector panel">
+    <h2 class="panel-title flex justify-between items-center">
+        Images
+        <button id="btn-refresh-images" class="text-sm py-1 px-3 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Refresh
+        </button>
+    </h2>
+    
+    <!-- Image Browser -->
+    <div id="image-browser" class="mb-4">
+        <div class="flex items-center mb-2">
+            <button id="btn-parent-dir" class="text-sm py-1 px-2 mr-2" disabled>
+                <span class="text-lg">↑</span> Parent
+            </button>
+            <span id="current-path" class="text-sm text-gray-600 truncate">Loading...</span>
+        </div>
+        
+        <div id="directory-list" class="max-h-40 overflow-y-auto border rounded p-2 mb-2 bg-gray-50">
+            <ul class="list-none text-sm">
+                <li class="text-gray-500">Loading...</li>
+            </ul>
+        </div>
+        
+        <div id="image-list" class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
+            <div class="grid grid-cols-3 gap-2 image-thumbnails">
+                <div class="text-gray-500 col-span-3 text-center py-4">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
