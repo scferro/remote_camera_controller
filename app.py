@@ -12,8 +12,8 @@ from processing import image_processor # Import the processing module (will be b
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 # Directory for storing timelapse sequences
 TIMELAPSE_DIR = os.path.join(BASE_DIR, 'timelapse_data')
-# Directory for storing processed output
-OUTPUT_DIR = os.path.join(BASE_DIR, 'processed_output')
+# Directory for storing single images
+OUTPUT_DIR = os.path.join(BASE_DIR, 'single_captures')
 # Directory for static files (like preview)
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 PREVIEW_FILE_PATH = os.path.join(STATIC_DIR, 'previews', 'preview.jpg')
@@ -262,7 +262,7 @@ def capture_single_api():
     cam = get_camera()
     if cam:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        capture_dir = os.path.join(OUTPUT_DIR, "single_captures")
+        capture_dir = OUTPUT_DIR
         os.makedirs(capture_dir, exist_ok=True)
         # Create a full file path for the captured image.
         capture_file = os.path.join(capture_dir, f"{timestamp}.jpg")
