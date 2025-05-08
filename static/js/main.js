@@ -276,7 +276,8 @@ async function startPreview(rotation = null) {
     if (rotation === null) {
         rotation = previewPortrait && previewPortrait.checked ? 90 : 0;
     }
-    console.log(`Starting preview with ${rotation}° rotation`);
+    const flip = previewFlip ? previewFlip.checked : false;
+    console.log(`Starting preview with ${rotation}° rotation, flip: ${flip}`);
 
     // Configure container aspect ratio only
     if (previewContainer) {
@@ -285,7 +286,7 @@ async function startPreview(rotation = null) {
     if (livePreviewImage) {
         livePreviewImage.classList.remove('hidden');
         livePreviewImage.src = ''; // Clear any previous image
-        // Remove any transform - let Python handle rotation
+        // No client-side transform needed - all handled by Python
         livePreviewImage.style.transform = '';
     }
 
@@ -293,7 +294,6 @@ async function startPreview(rotation = null) {
     if (btnStopPreview) btnStopPreview.disabled = true;
 
     const rate = previewRateInput ? parseFloat(previewRateInput.value) || 1.0 : 1.0;
-    const flip = previewFlip ? previewFlip.checked : false;  // Add this line
     previewRefreshRate = Math.max(100, 1000 / rate);
 
     const data = await fetchApi('/api/preview/start', {
@@ -302,7 +302,7 @@ async function startPreview(rotation = null) {
         body: JSON.stringify({ 
             rate: rate,
             rotation: rotation,
-            flip: flip  // Add this line
+            flip: flip
         })
     });
 
@@ -368,6 +368,17 @@ async function stopPreview() {
         // Refresh camera status to update button states correctly based on actual camera state
         await getCameraStatus(); // Wait for status update before resolving
     }
+}
+
+// Add flip checkbox listener
+if (previewFlip) {
+    previewFlip.addEventListener('change', () => {
+        if (isPreviewActive) {
+            // Restart preview with new flip setting
+            const rotation = previewPortrait && previewPortrait.checked ? 90 : 0;
+            stopPreview().then(() => startPreview(rotation));
+        }
+    });
 }
 
 // --- Single Capture ---

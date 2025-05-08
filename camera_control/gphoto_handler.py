@@ -447,11 +447,6 @@ class CameraHandler:
     def capture_preview(self, target_path, rotation=0, flip=False):
         """
         Captures a preview frame and saves it to target_path with optional rotation and flip.
-        
-        Args:
-            target_path: Path where to save the preview image
-            rotation: Degrees to rotate the image (-90 for portrait)
-            flip: If True, flip the image 180 degrees
         """
         with self.lock:
             if not self._ensure_camera_connected(): return False
@@ -472,12 +467,14 @@ class CameraHandler:
                     import io
                     image = Image.open(io.BytesIO(file_data))
                     
-                    # Apply transformations
+                    # Apply rotation first if needed
                     if rotation:
-                        image = image.rotate(-90, expand=True)
+                        image = image.rotate(-rotation, expand=True)
+                    
+                    # Apply flip (only in Python, nowhere else)
                     if flip:
-                        image = image.rotate(180)
-                        
+                        image = image.rotate(180)  # This is the ONLY place where flipping should occur
+                    
                     image.save(target_path, "JPEG")
                 except Exception as e:
                     log.error(f"Error processing preview image: {e}")

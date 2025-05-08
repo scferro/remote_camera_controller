@@ -66,10 +66,10 @@ def get_camera():
     return camera_handler_instance
 
 # --- Helper Functions ---
-def generate_preview_frames(rotation=0):
+def generate_preview_frames(rotation=0, flip=False):  # Add flip parameter
     """Background thread function to capture preview frames."""
     global preview_rate
-    log.info(f"Preview thread started. Target rate: {preview_rate} FPS, Rotation: {rotation}°")
+    log.info(f"Preview thread started. Target rate: {preview_rate} FPS, Rotation: {rotation}°, Flip: {flip}")
     cam = get_camera()
     if not cam:
         log.error("Preview thread: Camera not available.")
@@ -78,8 +78,8 @@ def generate_preview_frames(rotation=0):
     while not preview_active.is_set():
         start_time = time.time()
         try:
-            # Capture preview with rotation
-            success = cam.capture_preview(PREVIEW_FILE_PATH, rotation)
+            # Pass flip parameter to capture_preview
+            success = cam.capture_preview(PREVIEW_FILE_PATH, rotation, flip)
             if not success:
                 log.warning("Preview capture failed in loop.")
                 preview_active.wait(2.0)
@@ -289,6 +289,7 @@ def start_preview_api():
     data = request.json or {}
     rate = data.get('rate', 1.0)
     rotation = data.get('rotation', 0)  # Get rotation preference (0 or 90)
+    flip = data.get('flip', False)  # Get flip preference
     
     try:
         preview_rate = float(rate)
@@ -296,17 +297,17 @@ def start_preview_api():
     except (ValueError, TypeError):
         log.warning(f"Invalid preview rate received: {rate}. Using default {preview_rate} FPS.")
 
-    log.info(f"API request: /api/preview/start (Rate: {preview_rate} FPS, Rotation: {rotation}°)")
+    log.info(f"API request: /api/preview/start (Rate: {preview_rate} FPS, Rotation: {rotation}°, Flip: {flip})")
 
     cam = get_camera()
     if not cam:
          return jsonify({"success": False, "message": "Camera not available."}), 503
 
-    # Store rotation in thread context
+    # Store rotation and flip in thread context
     preview_active.clear()
     preview_thread = threading.Thread(
         target=generate_preview_frames,
-        args=(rotation,),  # Pass rotation to the preview function
+        args=(rotation, flip),  # Pass rotation and flip to the preview function
         name="PreviewThread",
         daemon=True
     )
