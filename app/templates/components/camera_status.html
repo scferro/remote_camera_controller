@@ -1,0 +1,26 @@
+<div class="panel">
+    <h2 class="panel-title flex justify-between items-center">
+        Camera Status
+        <button id="btn-refresh-settings" class="text-sm py-1 px-3 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Refresh
+        </button>
+    </h2>
+    <div id="camera-status">
+        <p>Status: <span id="status-connection" class="font-semibold">Checking...</span> <span id="status-spinner" class="spinner hidden"></span></p>
+        <p>Model: <span id="status-model" class="font-semibold">N/A</span></p>
+        <p id="status-message" class="text-sm text-gray-600 mt-1"></p>
+    </div>
+    <div id="camera-settings-container" class="overflow-x-auto">
+        <div id="camera-settings-collapsible">
+            <!-- Camera settings will be loaded here dynamically -->
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="panel-title">Capture Actions</h2>
+    <div class="mb-4 pb-4 border-b border-dashed">
+        <button id="btn-capture-single" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-medium">Capture Single Image</button>
+        <p id="capture-status" class="text-sm text-gray-600 mt-2">Status: Idle</p>
+    </div>
+</div>

@@ -1,0 +1,29 @@
+<div class="panel">
+    <h2 class="panel-title">Live Preview</h2>
+    <div class="flex items-center mb-2">
+        <label class="inline-flex items-center">
+            <input type="radio" name="preview-orientation" value="landscape" id="preview-landscape" class="mr-2" checked>
+            Landscape
+        </label>
+        <label class="inline-flex items-center ml-4">
+            <input type="radio" name="preview-orientation" value="portrait" id="preview-portrait" class="mr-2">
+            Portrait
+        </label>
+        <label class="inline-flex items-center ml-4">
+            <input type="checkbox" id="preview-flip" class="mr-2">
+            Flip 180°
+        </label>
+    </div>
+    <div id="preview-container" class="relative bg-black">
+        <img id="live-preview-image" src="{{ url_for('preview.preview_image', filename='preview.jpg') }}?t=0" alt="Live Preview"
+             class="w-full h-auto bg-black min-h-[150px] hidden"
+             onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
+    </div>
+    <div id="preview-error" class="text-red-600 text-sm hidden">Preview failed to load.</div>
+    <div class="flex items-center mt-3">
+        <label for="preview-rate" class="mr-2">Rate (fps):</label>
+        <input type="number" id="preview-rate" value="5" min="1.0" max="20.0" step="1.0" class="w-input-xs py-1">
+        <button id="btn-start-preview" class="ml-auto mr-1 text-sm py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white">Start</button>
+        <button id="btn-stop-preview" class="text-sm py-1 px-3 danger text-white disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop</button>
+    </div>
+</div>

@@ -1,19 +1,4 @@
-# Core web framework
-Flask
-
-# Camera control (requires libgphoto2-dev system package)
-gphoto2
-
-# RAW image processing (requires libraw-dev system package)
-rawpy
-
-# Image manipulation (preview generation, basic processing)
-Pillow
-
-# For video processing (requires ffmpeg system package)
-# Using subprocess directly for now, so no specific Python package needed here,
-# but ffmpeg command-line tool must be installed on the system.
-
-# Optional: For better background task management later
-# Flask-APScheduler
-# Celery
+flask==2.0.1
+gphoto2==2.3.4
+rawpy==0.17.1
+pillow==9.0.0

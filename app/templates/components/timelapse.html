@@ -1,0 +1,50 @@
+<div class="panel">
+    <h3 class="text-lg font-semibold mb-2">Timelapse</h3>
+    <div class="setting-group">
+        <div class="flex items-center mb-2">
+            <input type="radio" id="calculate-interval" name="timelapse-calculate-field" value="interval" class="mr-2">
+            <label for="calculate-interval" class="font-medium">Calculate Interval</label>
+        </div>
+        <label class="setting-label">Interval:</label>
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="number" id="timelapse-interval-hours" value="0" min="0" class="w-input-xs">
+            <label>h</label>
+            <input type="number" id="timelapse-interval-minutes" value="0" min="0" max="59" class="w-input-xs">
+            <label>m</label>
+            <input type="number" id="timelapse-interval-seconds" value="5" min="0" max="59" class="w-input-xs">
+            <label>s</label>
+        </div>
+    </div>
+
+    <div class="setting-group">
+        <div class="flex items-center mb-2">
+            <input type="radio" id="calculate-count" name="timelapse-calculate-field" value="count" class="mr-2">
+            <label for="calculate-count" class="font-medium">Calculate Count</label>
+        </div>
+        <label class="setting-label">Number of Images:</label>
+        <input type="number" id="timelapse-count" value="100" min="2" class="w-input-sm">
+    </div>
+
+    <div class="setting-group">
+        <div class="flex items-center mb-2">
+            <input type="radio" id="calculate-duration" name="timelapse-calculate-field" value="duration" class="mr-2" checked>
+            <label for="calculate-duration" class="font-medium">Calculate Duration</label>
+        </div>
+        <label class="setting-label">Total Duration:</label>
+        <div class="flex items-center space-x-2">
+            <input type="number" id="timelapse-duration-hours" value="0" min="0" class="w-input-xs">
+            <label>h</label>
+            <input type="number" id="timelapse-duration-minutes" value="8" min="0" max="59" class="w-input-xs">
+            <label>m</label>
+            <input type="number" id="timelapse-duration-seconds" value="20" min="0" max="59" class="w-input-xs">
+            <label>s</label>
+        </div>
+    </div>
+
+    <button id="btn-start-timelapse" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-medium">Start Timelapse</button>
+    <button id="btn-stop-timelapse" class="w-full mt-2 danger text-white font-medium disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop Timelapse</button>
+    <div id="timelapse-status-container" class="mt-2 text-sm text-gray-600">
+        <p>Status: <span id="timelapse-status-message">Idle</span></p>
+        <p>Progress: <span id="timelapse-progress">0 / 0</span></p>
+    </div>
+</div>
