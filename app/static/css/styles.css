@@ -12,6 +12,12 @@ body {
     border-radius: 0.5rem;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     margin-bottom: 1.5rem;
+    display: block !important; /* Ensure panels are visible */
+}
+
+/* For processing panels where we want equal height in side-by-side columns */
+.processing-panel {
+    height: 100%;
 }
 
 .panel-title {
@@ -47,6 +53,25 @@ button:disabled, .button:disabled {
     background-color: #9ca3af;
     cursor: not-allowed;
     box-shadow: none;
+}
+
+.button-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.button-primary:hover {
+    background-color: #2563eb;
+}
+
+.button-secondary {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+}
+
+.button-secondary:hover {
+    background-color: #e5e7eb;
 }
 
 button.danger, .button.danger {
@@ -170,4 +195,42 @@ label {
     width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+/* Image processing specific styles */
+#image-preview-container img {
+    transition: transform 0.3s ease;
+    transform-origin: center;
+}
+
+.thumbnail {
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.thumbnail.active {
+    border-color: #3b82f6;
+}
+
+/* Progress bar styles */
+.progress-bar {
+    width: 100%;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 8px;
+    background-color: #3b82f6;
+    transition: width 0.3s ease-in-out;
+}
+
+/* Customize form checkboxes and radio buttons */
+input[type="checkbox"], input[type="radio"] {
+    accent-color: #3b82f6;
 }

@@ -3,7 +3,7 @@
 {% block title %}Remote Camera Controller{% endblock %}
 
 {% block content %}
-    <div id="tab-live-control" class="tab-content">
+    <div id="tab-live-control" class="tab-content active">
         <div class="max-w-screen-2xl mx-auto">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
@@ -18,76 +18,31 @@
     </div>
 
     <div id="tab-timelapse-processing" class="tab-content hidden">
-        <div class="panel">
-            <h2 class="panel-title">Timelapse Processing & Assembly</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-1">
-                    <h3 class="text-lg font-semibold mb-2">Available Timelapses:</h3>
-                    <div id="timelapse-list-container" class="mb-4">
-                        <div class="max-h-96 overflow-y-auto border rounded p-2 bg-gray-50">
-                            <ul id="timelapse-list" class="list-disc pl-5 text-sm">
-                                <li>Loading...</li>
-                            </ul>
-                        </div>
-                        <button id="btn-refresh-timelapses" class="mt-3 text-sm py-1 px-3">Refresh List</button>
-                    </div>
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-6">
+                    {% include 'components/processing/timelapse_browser.html' %}
+                    {% include 'components/processing/timelapse_editing.html' %}
+                    {% include 'components/processing/timelapse_export.html' %}
                 </div>
-                <div class="md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-2">Processing Options for <span id="selected-timelapse-name" class="text-blue-600">None</span></h3>
-                    <div id="timelapse-processor" class="space-y-4">
-                        <p id="timelapse-select-prompt" class="text-gray-500">Select a timelapse sequence from the list to process.</p>
-                        <div id="timelapse-options-panel" class="hidden space-y-4">
-                            <fieldset class="border p-3 rounded">
-                                <legend class="text-base font-medium px-1">RAW Processing (if applicable)</legend>
-                                <div class="setting-group">
-                                    <label class="setting-label"><input type="checkbox" id="tl-process-raw" checked> Process RAW files (if present)</label>
-                                </div>
-                                <div class="setting-group">
-                                    <label class="setting-label"><input type="checkbox" id="tl-use-camera-wb" checked> Use Camera White Balance</label>
-                                </div>
-                                <div class="setting-group">
-                                    <label for="tl-brightness" class="setting-label">Brightness/Exposure:</label>
-                                    <input type="range" id="tl-brightness" min="0.25" max="4.0" step="0.05" value="1.0" class="w-full">
-                                    <span class="text-xs">(Value: <span id="tl-brightness-value">1.0</span>)</span>
-                                </div>
-                            </fieldset>
-
-                            <fieldset class="border p-3 rounded">
-                                <legend class="text-base font-medium px-1">Video Assembly</legend>
-                                <div class="setting-group">
-                                    <label for="tl-fps" class="setting-label">Frame Rate (FPS):</label>
-                                    <input type="number" id="tl-fps" value="24" min="1" max="60" class="w-input-sm">
-                                </div>
-                                <div class="setting-group">
-                                    <label for="tl-resolution" class="setting-label">Resolution (e.g., 1920x1080, leave blank for original):</label>
-                                    <input type="text" id="tl-resolution" placeholder="Optional" class="w-input-md">
-                                </div>
-                                <div class="setting-group">
-                                    <label class="setting-label">Crop (X, Y, Width, Height - Optional):</label>
-                                    <div class="flex space-x-2">
-                                        <input type="number" id="tl-crop-x" placeholder="X" class="w-input-xs">
-                                        <input type="number" id="tl-crop-y" placeholder="Y" class="w-input-xs">
-                                        <input type="number" id="tl-crop-w" placeholder="W" class="w-input-xs">
-                                        <input type="number" id="tl-crop-h" placeholder="H" class="w-input-xs">
-                                    </div>
-                                </div>
-                            </fieldset>
-
-                            <button id="btn-assemble-timelapse" class="button mt-4">Assemble Video</button>
-                            <p id="timelapse-assembly-status" class="text-sm mt-2"></p>
-                        </div>
-                    </div>
+                <div>
+                    {% include 'components/processing/timelapse_preview.html' %}
                 </div>
             </div>
         </div>
     </div>
 
     <div id="tab-single-processing" class="tab-content hidden">
-        <div class="panel">
-            <h2 class="panel-title">Single Image Processing</h2>
-            <div id="single-image-processor">
-                <p class="text-gray-500">Functionality not yet implemented.</p>
-                <p class="text-gray-500 mt-2">Future: Select image (from captures/timelapses or upload), apply RAW settings, save processed version.</p>
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-6">
+                    {% include 'components/processing/single_image_browser.html' %}
+                    {% include 'components/processing/single_image_editing.html' %}
+                    {% include 'components/processing/single_image_export.html' %}
+                </div>
+                <div>
+                    {% include 'components/processing/single_image_preview.html' %}
+                </div>
             </div>
         </div>
     </div>
@@ -98,4 +53,14 @@
 <script src="{{ url_for('static', filename='js/preview.js') }}"></script>
 <script src="{{ url_for('static', filename='js/timelapse.js') }}"></script>
 <script src="{{ url_for('static', filename='js/processing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/single_image_browser.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/single_image_preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/single_image_editing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/single_image_export.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/timelapse_browser.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/timelapse_preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/timelapse_editing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing/timelapse_export.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing_init.js') }}"></script>
+<script src="{{ url_for('static', filename='js/debug.js') }}"></script>
 {% endblock %}

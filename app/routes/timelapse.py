@@ -189,3 +189,51 @@ def list_timelapses_api():
     except Exception as e:
         app.logger.error(f"Error listing timelapse directories: {e}", exc_info=True)
         return jsonify({"error": "Failed to list timelapse directories."}), 500
+        
+@timelapse_bp.route('/info', methods=['GET'])
+def timelapse_info_api():
+    """API endpoint to get information about a specific timelapse sequence."""
+    app = current_app
+    folder_name = request.args.get('folder')
+    
+    if not folder_name:
+        return jsonify({"success": False, "message": "Folder name parameter is required."}), 400
+    
+    try:
+        folder_path = os.path.join(TIMELAPSE_DIR, folder_name)
+        
+        if not os.path.isdir(folder_path):
+            return jsonify({"success": False, "message": f"Timelapse folder not found: {folder_name}"}), 404
+        
+        # Get folder creation time
+        created_at = datetime.datetime.fromtimestamp(os.path.getctime(folder_path)).isoformat()
+        
+        # Get list of image files and count them
+        image_extensions = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.arw', '.raw', '.nef', '.cr2')
+        image_files = []
+        image_types = set()
+        
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                if file.lower().endswith(image_extensions):
+                    image_files.append(os.path.join(root, file))
+                    ext = os.path.splitext(file)[1].lower().lstrip('.')
+                    image_types.add(ext)
+        
+        # Check if there's a processed folder
+        processed_path = os.path.join(TIMELAPSE_DIR, 'processed', folder_name)
+        processed = os.path.isdir(processed_path)
+        
+        # Return the information
+        return jsonify({
+            "success": True,
+            "folder": folder_name,
+            "created_at": created_at,
+            "image_count": len(image_files),
+            "image_types": list(image_types),
+            "processed": processed
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting timelapse info: {e}", exc_info=True)
+        return jsonify({"success": False, "message": f"Error getting timelapse info: {str(e)}"}), 500
