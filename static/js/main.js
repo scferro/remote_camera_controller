@@ -265,17 +265,28 @@ function populateCollapsibleSettings(settings, container) {
 }
 
 // --- Live Preview ---
-async function startPreview(rotation = 0) {
-    console.log(`Starting preview with ${rotation}° rotation...`);
+async function startPreview(rotation = null) {
+    console.log("Starting preview...");
     if (isPreviewActive) {
         console.warn("Preview start requested but already active.");
         return;
     }
 
-    // Show black background by removing hidden class from image container
+    // Determine initial rotation from radio buttons if not specified
+    if (rotation === null) {
+        rotation = previewPortrait && previewPortrait.checked ? 90 : 0;
+    }
+    console.log(`Starting preview with ${rotation}° rotation`);
+
+    // Configure container aspect ratio only
+    if (previewContainer) {
+        previewContainer.style.aspectRatio = rotation === 90 ? '2/3' : '3/2';
+    }
     if (livePreviewImage) {
         livePreviewImage.classList.remove('hidden');
         livePreviewImage.src = ''; // Clear any previous image
+        // Remove any transform - let Python handle rotation
+        livePreviewImage.style.transform = '';
     }
 
     if (btnStartPreview) btnStartPreview.disabled = true;
@@ -816,7 +827,12 @@ if (btnRefreshStatus) {
    btnRefreshStatus.removeEventListener('click', getCameraStatus);
 }
 
-if (btnStartPreview) btnStartPreview.addEventListener('click', startPreview);
+if (btnStartPreview) {
+    btnStartPreview.addEventListener('click', () => {
+        const rotation = previewPortrait && previewPortrait.checked ? 90 : 0;
+        startPreview(rotation);
+    });
+}
 if (btnStopPreview) btnStopPreview.addEventListener('click', stopPreview);
 if (btnCaptureSingle) btnCaptureSingle.addEventListener('click', captureSingle);
 
@@ -826,33 +842,31 @@ if (btnRefreshTimelapses) btnRefreshTimelapses.addEventListener('click', listTim
 if (btnAssembleTimelapse) { // Check if button exists before adding listener
    btnAssembleTimelapse.addEventListener('click', assembleTimelapse);
 }
-if (previewRotate) {
-   previewRotate.addEventListener('change', (event) => {
-       if (livePreviewImage) {
-           livePreviewImage.style.transform = event.target.checked ? 'rotate(90deg)' : '';
-           livePreviewImage.style.transformOrigin = 'center center';
-       }
-   });
-}
 
+// Update event listeners to remove any client-side rotation
 if (previewLandscape && previewPortrait) {
     previewLandscape.addEventListener('change', () => {
+        if (previewContainer) {
+            previewContainer.style.aspectRatio = '3/2';
+        }
         if (isPreviewActive) {
-            // Restart preview with new rotation
-            stopPreview().then(() => {
-                startPreview(0);  // 0 degrees rotation
-            });
+            stopPreview().then(() => startPreview(0));
         }
     });
     
     previewPortrait.addEventListener('change', () => {
+        if (previewContainer) {
+            previewContainer.style.aspectRatio = '2/3';
+        }
         if (isPreviewActive) {
-            // Restart preview with new rotation
-            stopPreview().then(() => {
-                startPreview(90);  // 90 degrees rotation
-            });
+            stopPreview().then(() => startPreview(90));
         }
     });
+}
+
+// Remove the old rotation event listener if it exists
+if (previewRotate) {
+    previewRotate.removeEventListener('change', () => {});
 }
 
 // Settings changes using event delegation
