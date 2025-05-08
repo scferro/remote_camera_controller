@@ -5,39 +5,42 @@ from app.routes import preview_bp
 from app.routes.camera import get_camera
 from app.config import PREVIEW_FILE_PATH
 
-def generate_preview_frames(rotation=0, flip=False):
+def generate_preview_frames(app, rotation=0, flip=False):
     """Background thread function to capture preview frames."""
-    app = current_app._get_current_object()  # Get actual app, not proxy
+    # Use the passed app instance instead of trying to get it from current_app
     logger = app.logger
     
     logger.info(f"Preview thread started. Target rate: {app.preview_rate} FPS, Rotation: {rotation}°, Flip: {flip}")
-    cam = get_camera()
     
-    if not cam:
-        logger.error("Preview thread: Camera not available.")
-        return
+    # Use app context to ensure proper access to app attributes
+    with app.app_context():
+        cam = get_camera()
+        
+        if not cam:
+            logger.error("Preview thread: Camera not available.")
+            return
 
-    while not app.preview_active.is_set():
-        start_time = time.time()
-        try:
-            # Pass flip parameter to capture_preview
-            success = cam.capture_preview(PREVIEW_FILE_PATH, rotation, flip)
-            if not success:
-                logger.warning("Preview capture failed in loop.")
+        while not app.preview_active.is_set():
+            start_time = time.time()
+            try:
+                # Pass flip parameter to capture_preview
+                success = cam.capture_preview(PREVIEW_FILE_PATH, rotation, flip)
+                if not success:
+                    logger.warning("Preview capture failed in loop.")
+                    app.preview_active.wait(2.0)
+                    continue
+
+            except Exception as e:
+                logger.error(f"Error during preview capture: {e}", exc_info=True)
                 app.preview_active.wait(2.0)
                 continue
 
-        except Exception as e:
-            logger.error(f"Error during preview capture: {e}", exc_info=True)
-            app.preview_active.wait(2.0)
-            continue
+            elapsed_time = time.time() - start_time
+            sleep_duration = max(0, (1.0 / app.preview_rate) - elapsed_time)
+            if sleep_duration > 0:
+                app.preview_active.wait(sleep_duration)
 
-        elapsed_time = time.time() - start_time
-        sleep_duration = max(0, (1.0 / app.preview_rate) - elapsed_time)
-        if sleep_duration > 0:
-            app.preview_active.wait(sleep_duration)
-
-    logger.info("Preview thread finished.")
+        logger.info("Preview thread finished.")
 
 @preview_bp.route('/start', methods=['POST'])
 def start_preview_api():
@@ -66,11 +69,13 @@ def start_preview_api():
     if not cam:
         return jsonify({"success": False, "message": "Camera not available."}), 503
 
-    # Store rotation and flip in thread context
+    # Get a reference to the current app for the thread
+    app_instance = current_app._get_current_object()
+    
     app.preview_active.clear()
     app.preview_thread = threading.Thread(
         target=generate_preview_frames,
-        args=(rotation, flip),  # Pass rotation and flip to the preview function
+        args=(app_instance, rotation, flip),  # Pass app instance to the thread
         name="PreviewThread",
         daemon=True
     )
