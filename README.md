@@ -1,4 +1,4 @@
-# Remote Camera Controller v0.1.0
+# Remote Camera Controller v0.2.0
 
 A web-based application to remotely control and manage USB-connected cameras (primarily tested with Sony Alpha series) using Python, Flask, and gphoto2.
 
@@ -61,9 +61,9 @@ A web-based application to remotely control and manage USB-connected cameras (pr
     cd path/to/remote_camera_controller
     ```
 
-2.  Run the Flask application:
+2.  Run the application:
     ```bash
-    python3 app.py
+    python3 run.py
     ```
 
 3.  The server will start, typically listening on `http://0.0.0.0:5000`.
