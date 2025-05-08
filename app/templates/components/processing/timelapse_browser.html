@@ -1,0 +1,40 @@
+{% block timelapse_browser %}
+<div class="panel">
+    <h2 class="panel-title">Timelapse Browser</h2>
+    <div class="space-y-4">
+        <!-- Timelapse list -->
+        <div id="timelapse-list-container">
+            <div class="max-h-64 overflow-y-auto border rounded p-2 bg-gray-50">
+                <ul id="timelapse-list" class="divide-y divide-gray-200">
+                    <li class="p-2 hover:bg-blue-50 cursor-pointer">Loading timelapses...</li>
+                </ul>
+            </div>
+            <div class="flex justify-between mt-2">
+                <button id="btn-refresh-timelapses" class="text-sm py-1 px-3 bg-gray-200 hover:bg-gray-300 rounded">Refresh List</button>
+                <span id="timelapse-count" class="text-sm text-gray-500">0 timelapses found</span>
+            </div>
+        </div>
+        
+        <!-- Selected timelapse info -->
+        <div id="selected-timelapse-info" class="space-y-2 hidden">
+            <h3 class="font-semibold">Selected: <span id="selected-timelapse-name" class="text-blue-600">None</span></h3>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <div>Date Created:</div>
+                <div id="timelapse-creation-date">-</div>
+                <div>Image Count:</div>
+                <div id="timelapse-image-count">-</div>
+                <div>Image Type:</div>
+                <div id="timelapse-image-type">-</div>
+                <div>Status:</div>
+                <div id="timelapse-processing-status">Not processed</div>
+            </div>
+        </div>
+        
+        <!-- No timelapses message -->
+        <div id="no-timelapses-message" class="text-center text-gray-500 py-4 hidden">
+            No timelapse sequences found.<br>
+            Capture a timelapse first using the Live Control tab.
+        </div>
+    </div>
+</div>
+{% endblock %}

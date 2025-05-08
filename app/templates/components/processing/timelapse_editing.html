@@ -1,0 +1,95 @@
+{% block timelapse_editing %}
+<div class="panel">
+    <h2 class="panel-title">Batch Adjustments</h2>
+    <div id="no-timelapse-selected-edit" class="text-center text-gray-500 py-4">
+        Select a timelapse to enable batch editing
+    </div>
+    <div id="timelapse-editing-controls" class="space-y-4 hidden">
+        <!-- Basic adjustments for all images -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Basic Adjustments</legend>
+            
+            <div class="setting-group">
+                <label for="tl-brightness-slider" class="setting-label flex justify-between">
+                    <span>Brightness:</span>
+                    <span id="tl-brightness-value">1.0</span>
+                </label>
+                <input type="range" id="tl-brightness-slider" min="0.25" max="2.0" step="0.05" value="1.0" class="w-full">
+            </div>
+            
+            <div class="setting-group">
+                <label for="tl-contrast-slider" class="setting-label flex justify-between">
+                    <span>Contrast:</span>
+                    <span id="tl-contrast-value">1.0</span>
+                </label>
+                <input type="range" id="tl-contrast-slider" min="0.25" max="2.0" step="0.05" value="1.0" class="w-full">
+            </div>
+            
+            <div class="setting-group">
+                <label for="tl-saturation-slider" class="setting-label flex justify-between">
+                    <span>Saturation:</span>
+                    <span id="tl-saturation-value">1.0</span>
+                </label>
+                <input type="range" id="tl-saturation-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full">
+            </div>
+        </fieldset>
+        
+        <!-- RAW specific settings -->
+        <fieldset id="tl-raw-settings" class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">RAW Processing</legend>
+            
+            <div class="setting-group">
+                <label class="setting-label"><input type="checkbox" id="tl-process-raw" checked> Process RAW files (if present)</label>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label"><input type="checkbox" id="tl-use-camera-wb" checked> Use Camera White Balance</label>
+            </div>
+            
+            <div class="setting-group">
+                <label for="tl-highlight-recovery" class="setting-label flex justify-between">
+                    <span>Highlight Recovery:</span>
+                    <span id="tl-highlight-recovery-value">0</span>
+                </label>
+                <input type="range" id="tl-highlight-recovery" min="0" max="100" step="5" value="0" class="w-full">
+            </div>
+        </fieldset>
+        
+        <!-- Apply to All or Selected -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Apply Settings</legend>
+            
+            <div class="setting-group">
+                <label class="setting-label">Apply to:</label>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="apply-scope" value="all" checked class="form-radio">
+                        <span class="ml-2">All images</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="apply-scope" value="selected" class="form-radio">
+                        <span class="ml-2">Selected only</span>
+                    </label>
+                </div>
+            </div>
+        </fieldset>
+        
+        <!-- Action buttons -->
+        <div class="flex space-x-2">
+            <button id="btn-apply-batch-edits" class="button-primary">Apply to Batch</button>
+            <button id="btn-reset-batch-edits" class="button-secondary">Reset</button>
+        </div>
+        
+        <div id="batch-processing-status" class="text-sm hidden">
+            <div class="flex items-center">
+                <div class="mr-2 w-4 h-4 rounded-full animate-pulse bg-blue-500"></div>
+                <span>Processing...</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                <div id="batch-progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <p>Processed <span id="batch-processed-count">0</span>/<span id="batch-total-count">0</span> images</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

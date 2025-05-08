@@ -1,0 +1,57 @@
+{% block single_image_preview %}
+<div class="panel processing-panel">
+    <h2 class="panel-title">Image Preview</h2>
+    <div class="space-y-4">
+        <!-- Preview mode selector -->
+        <div class="flex justify-center space-x-2 text-sm">
+            <button id="btn-preview-original" class="px-3 py-1 bg-blue-500 text-white rounded active">Original</button>
+            <button id="btn-preview-processed" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Processed</button>
+            <button id="btn-preview-split" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Side by Side</button>
+        </div>
+
+        <!-- No image selected message -->
+        <div id="no-image-selected" class="flex flex-col items-center justify-center h-64 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p class="mt-2">Select an image to preview</p>
+        </div>
+
+        <!-- Image preview container -->
+        <div id="image-preview-container" class="hidden">
+            <!-- Original image view -->
+            <div id="original-preview" class="relative">
+                <img id="original-image" src="" alt="Original image" class="max-w-full max-h-[500px] mx-auto border rounded">
+                <div class="absolute top-0 left-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Original</div>
+            </div>
+            
+            <!-- Processed image view (initially hidden) -->
+            <div id="processed-preview" class="relative hidden">
+                <img id="processed-image" src="" alt="Processed image" class="max-w-full max-h-[500px] mx-auto border rounded">
+                <div class="absolute top-0 left-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Processed</div>
+            </div>
+            
+            <!-- Side by side view (initially hidden) -->
+            <div id="split-preview" class="hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="relative">
+                        <img id="original-split-image" src="" alt="Original image" class="max-w-full max-h-[250px] mx-auto border rounded">
+                        <div class="absolute top-0 left-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Original</div>
+                    </div>
+                    <div class="relative">
+                        <img id="processed-split-image" src="" alt="Processed image" class="max-w-full max-h-[250px] mx-auto border rounded">
+                        <div class="absolute top-0 left-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Processed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zoom and pan controls -->
+        <div id="preview-controls" class="flex justify-center space-x-4 text-sm hidden">
+            <button id="btn-zoom-in" class="px-2 py-1 bg-gray-200 text-gray-700 rounded">Zoom In</button>
+            <button id="btn-zoom-out" class="px-2 py-1 bg-gray-200 text-gray-700 rounded">Zoom Out</button>
+            <button id="btn-zoom-reset" class="px-2 py-1 bg-gray-200 text-gray-700 rounded">Reset</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

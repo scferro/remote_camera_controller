@@ -1,0 +1,77 @@
+{% block single_image_editing %}
+<div class="panel">
+    <h2 class="panel-title">Image Adjustments</h2>
+    <div id="no-image-selected-edit" class="text-center text-gray-500 py-4">
+        Select an image to enable editing
+    </div>
+    <div id="editing-controls" class="space-y-4 hidden">
+        <!-- Basic adjustments -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Basic Adjustments</legend>
+            
+            <div class="setting-group">
+                <label for="brightness-slider" class="setting-label flex justify-between">
+                    <span>Brightness:</span>
+                    <span id="brightness-value">1.0</span>
+                </label>
+                <input type="range" id="brightness-slider" min="0.25" max="2.0" step="0.05" value="1.0" class="w-full">
+            </div>
+            
+            <div class="setting-group">
+                <label for="contrast-slider" class="setting-label flex justify-between">
+                    <span>Contrast:</span>
+                    <span id="contrast-value">1.0</span>
+                </label>
+                <input type="range" id="contrast-slider" min="0.25" max="2.0" step="0.05" value="1.0" class="w-full">
+            </div>
+            
+            <div class="setting-group">
+                <label for="saturation-slider" class="setting-label flex justify-between">
+                    <span>Saturation:</span>
+                    <span id="saturation-value">1.0</span>
+                </label>
+                <input type="range" id="saturation-slider" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full">
+            </div>
+        </fieldset>
+        
+        <!-- RAW specific settings -->
+        <fieldset id="raw-settings" class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">RAW Processing</legend>
+            
+            <div class="setting-group">
+                <label class="setting-label"><input type="checkbox" id="use-camera-wb" checked> Use Camera White Balance</label>
+            </div>
+            
+            <div class="setting-group">
+                <label for="highlight-recovery" class="setting-label flex justify-between">
+                    <span>Highlight Recovery:</span>
+                    <span id="highlight-recovery-value">0</span>
+                </label>
+                <input type="range" id="highlight-recovery" min="0" max="100" step="5" value="0" class="w-full">
+            </div>
+            
+            <div class="setting-group">
+                <label for="color-temp-slider" class="setting-label flex justify-between">
+                    <span>Color Temperature:</span>
+                    <span id="color-temp-value">5500K</span>
+                </label>
+                <input type="range" id="color-temp-slider" min="2500" max="10000" step="100" value="5500" class="w-full">
+            </div>
+            
+            <div class="setting-group">
+                <label for="tint-slider" class="setting-label flex justify-between">
+                    <span>Tint:</span>
+                    <span id="tint-value">0</span>
+                </label>
+                <input type="range" id="tint-slider" min="-100" max="100" step="1" value="0" class="w-full">
+            </div>
+        </fieldset>
+        
+        <!-- Action buttons -->
+        <div class="flex space-x-2">
+            <button id="btn-apply-edits" class="button-primary">Apply</button>
+            <button id="btn-reset-edits" class="button-secondary">Reset</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

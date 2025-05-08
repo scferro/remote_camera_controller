@@ -1,0 +1,89 @@
+{% block single_image_export %}
+<div class="panel">
+    <h2 class="panel-title">Export Options</h2>
+    <div id="no-image-selected-export" class="text-center text-gray-500 py-4">
+        Select an image to enable export options
+    </div>
+    <div id="export-controls" class="space-y-4 hidden">
+        <!-- Output format options -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Output Format</legend>
+            
+            <div class="setting-group">
+                <label class="setting-label">Format:</label>
+                <div class="grid grid-cols-3 gap-2 mt-1">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="export-format" value="JPEG" checked class="form-radio">
+                        <span class="ml-2">JPEG</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="export-format" value="PNG" class="form-radio">
+                        <span class="ml-2">PNG</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="export-format" value="TIFF" class="form-radio">
+                        <span class="ml-2">TIFF</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- JPEG specific options -->
+            <div id="jpeg-options" class="setting-group">
+                <label for="jpeg-quality" class="setting-label flex justify-between">
+                    <span>Quality:</span>
+                    <span id="jpeg-quality-value">95%</span>
+                </label>
+                <input type="range" id="jpeg-quality" min="60" max="100" step="1" value="95" class="w-full">
+            </div>
+        </fieldset>
+        
+        <!-- Size options -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Output Size</legend>
+            
+            <div class="setting-group">
+                <label class="setting-label"><input type="checkbox" id="maintain-aspect-ratio" checked> Maintain aspect ratio</label>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Resize:</label>
+                <select id="resize-preset" class="w-full rounded border p-1 text-sm">
+                    <option value="original">Original size</option>
+                    <option value="1920x1080">1920 × 1080 (HD)</option>
+                    <option value="3840x2160">3840 × 2160 (4K)</option>
+                    <option value="1200x1200">1200 × 1200 (Square)</option>
+                    <option value="custom">Custom size</option>
+                </select>
+            </div>
+            
+            <div id="custom-size" class="setting-group hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="custom-width" class="text-xs">Width (px):</label>
+                        <input type="number" id="custom-width" class="w-full rounded border p-1 text-sm" placeholder="Width">
+                    </div>
+                    <div>
+                        <label for="custom-height" class="text-xs">Height (px):</label>
+                        <input type="number" id="custom-height" class="w-full rounded border p-1 text-sm" placeholder="Height">
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        
+        <!-- Output path -->
+        <div class="setting-group">
+            <label for="export-filename" class="setting-label">Output filename:</label>
+            <input type="text" id="export-filename" class="w-full rounded border p-1 text-sm" placeholder="auto-generated">
+            <p class="text-xs text-gray-500 mt-1">Leave empty for auto-generated name</p>
+        </div>
+        
+        <!-- Action buttons -->
+        <div class="flex space-x-2">
+            <button id="btn-export-image" class="button-primary">Export Image</button>
+            <button id="btn-download-image" class="button-secondary">Download</button>
+        </div>
+        
+        <div id="export-status" class="text-sm text-blue-600 hidden"></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% block single_image_browser %}
+<div class="panel">
+    <h2 class="panel-title">Image Browser</h2>
+    <div class="space-y-4">
+        <!-- Browse modes -->
+        <div class="setting-group">
+            <label class="text-sm font-medium">Browse Source:</label>
+            <div class="flex space-x-2 mt-1">
+                <button id="btn-browse-captures" class="px-3 py-1 bg-blue-500 text-white rounded text-sm active">Captures</button>
+                <button id="btn-browse-timelapses" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm">Timelapses</button>
+                <button id="btn-browse-upload" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm">Upload</button>
+            </div>
+        </div>
+
+        <!-- File Upload Section (initially hidden) -->
+        <div id="upload-section" class="hidden">
+            <div class="border-2 border-dashed border-gray-300 rounded p-4 text-center">
+                <label for="file-upload" class="cursor-pointer text-blue-500 hover:text-blue-700">
+                    <span>Click to upload an image</span>
+                    <input id="file-upload" type="file" accept="image/*,.arw,.raw,.nef,.cr2" class="hidden">
+                </label>
+                <p class="text-xs text-gray-500 mt-1">Supports JPG, PNG, and RAW formats</p>
+            </div>
+        </div>
+
+        <!-- File Browser Section -->
+        <div id="file-browser-section">
+            <!-- Path navigation -->
+            <div class="flex items-center space-x-2 text-sm mb-2">
+                <span id="current-path" class="text-gray-600 truncate">/single_captures</span>
+                <button id="btn-parent-dir" class="text-blue-500 hover:text-blue-700">⬆️ Up</button>
+                <button id="btn-refresh-files" class="text-blue-500 hover:text-blue-700">🔄 Refresh</button>
+            </div>
+
+            <!-- File list -->
+            <div class="max-h-64 overflow-y-auto border rounded">
+                <ul id="file-list" class="divide-y divide-gray-200">
+                    <li class="p-2 hover:bg-blue-50 cursor-pointer">Loading files...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Selected file info -->
+        <div id="selected-file-info" class="text-sm hidden">
+            <p>Selected: <span id="selected-filename" class="font-medium text-blue-600">None</span></p>
+            <p>Type: <span id="selected-filetype">-</span></p>
+            <p>Size: <span id="selected-filesize">-</span></p>
+            <p>Dimensions: <span id="selected-dimensions">-</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

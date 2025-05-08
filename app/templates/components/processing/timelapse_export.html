@@ -1,0 +1,129 @@
+{% block timelapse_export %}
+<div class="panel">
+    <h2 class="panel-title">Export & Assembly</h2>
+    <div id="no-timelapse-selected-export" class="text-center text-gray-500 py-4">
+        Select a timelapse to enable export options
+    </div>
+    <div id="timelapse-export-controls" class="space-y-4 hidden">
+        <!-- Video assembly options -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Video Options</legend>
+            
+            <div class="setting-group">
+                <label for="tl-fps" class="setting-label">Frame Rate (FPS):</label>
+                <input type="number" id="tl-fps" value="24" min="1" max="60" class="w-24 rounded border p-1 text-sm">
+            </div>
+            
+            <div class="setting-group">
+                <label for="tl-codec" class="setting-label">Video Codec:</label>
+                <select id="tl-codec" class="w-full rounded border p-1 text-sm">
+                    <option value="h264">H.264 (MP4)</option>
+                    <option value="h265">H.265/HEVC (MP4)</option>
+                    <option value="prores">ProRes (MOV)</option>
+                    <option value="vp9">VP9 (WebM)</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="tl-quality" class="setting-label flex justify-between">
+                    <span>Quality:</span>
+                    <span id="tl-quality-value">Medium</span>
+                </label>
+                <input type="range" id="tl-quality" min="1" max="5" step="1" value="3" class="w-full">
+                <div class="flex justify-between text-xs text-gray-500">
+                    <span>Lower Size</span>
+                    <span>Higher Quality</span>
+                </div>
+            </div>
+        </fieldset>
+        
+        <!-- Size and crop options -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Output Size</legend>
+            
+            <div class="setting-group">
+                <label for="tl-resolution" class="setting-label">Resolution:</label>
+                <select id="tl-resolution-preset" class="w-full rounded border p-1 text-sm">
+                    <option value="original">Original size</option>
+                    <option value="1920x1080">1920 × 1080 (Full HD)</option>
+                    <option value="3840x2160">3840 × 2160 (4K UHD)</option>
+                    <option value="1080x1080">1080 × 1080 (Square HD)</option>
+                    <option value="custom">Custom size</option>
+                </select>
+            </div>
+            
+            <div id="tl-custom-size" class="setting-group hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="tl-custom-width" class="text-xs">Width (px):</label>
+                        <input type="number" id="tl-custom-width" class="w-full rounded border p-1 text-sm" placeholder="Width">
+                    </div>
+                    <div>
+                        <label for="tl-custom-height" class="text-xs">Height (px):</label>
+                        <input type="number" id="tl-custom-height" class="w-full rounded border p-1 text-sm" placeholder="Height">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Crop:</label>
+                <div class="flex justify-between text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="tl-crop-x" class="text-xs">X:</label>
+                            <input type="number" id="tl-crop-x" class="w-full rounded border p-1 text-sm" placeholder="0">
+                        </div>
+                        <div>
+                            <label for="tl-crop-y" class="text-xs">Y:</label>
+                            <input type="number" id="tl-crop-y" class="w-full rounded border p-1 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="tl-crop-w" class="text-xs">Width:</label>
+                            <input type="number" id="tl-crop-w" class="w-full rounded border p-1 text-sm" placeholder="Width">
+                        </div>
+                        <div>
+                            <label for="tl-crop-h" class="text-xs">Height:</label>
+                            <input type="number" id="tl-crop-h" class="w-full rounded border p-1 text-sm" placeholder="Height">
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Leave empty for no cropping</p>
+            </div>
+        </fieldset>
+        
+        <!-- Output options -->
+        <fieldset class="border p-3 rounded">
+            <legend class="text-base font-medium px-1">Output Options</legend>
+            
+            <div class="setting-group">
+                <label class="setting-label flex items-center">
+                    <input type="checkbox" id="tl-export-images" class="mr-2">
+                    Export processed images as sequence
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label for="tl-export-filename" class="setting-label">Output filename prefix:</label>
+                <input type="text" id="tl-export-filename" class="w-full rounded border p-1 text-sm" placeholder="auto-generated">
+                <p class="text-xs text-gray-500 mt-1">Leave empty to use timelapse folder name</p>
+            </div>
+        </fieldset>
+        
+        <!-- Action buttons -->
+        <div class="flex flex-col space-y-2">
+            <button id="btn-assemble-timelapse" class="button-primary">Assemble Video</button>
+            <button id="btn-export-timelapse-frames" class="button-secondary">Export Image Sequence</button>
+        </div>
+        
+        <div id="timelapse-assembly-status" class="text-sm hidden">
+            <div class="flex items-center">
+                <div class="mr-2 w-4 h-4 rounded-full animate-pulse bg-blue-500"></div>
+                <span>Processing timelapse...</span>
+            </div>
+            <p class="mt-1">This might take several minutes depending on the sequence length.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
