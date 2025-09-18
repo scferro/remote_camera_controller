@@ -1,4 +1,4 @@
-flask==2.0.1
-gphoto2==2.3.4
-rawpy==0.17.1
-pillow==9.0.0
+flask>=2.0.1
+gphoto2>=2.3.4
+rawpy>=0.17.3
+pillow>=9.0.0
