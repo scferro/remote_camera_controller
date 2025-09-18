@@ -114,7 +114,37 @@ function switchTab(targetTabId) {
     }
 }
 
-// Initialize tab event listeners
+// Form persistence utilities
+function saveFormValue(element) {
+    if (element.id) {
+        const value = element.type === 'checkbox' || element.type === 'radio' ? element.checked : element.value;
+        localStorage.setItem(`form_${element.id}`, JSON.stringify(value));
+    }
+}
+
+function restoreFormData() {
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (element.id) {
+            const savedValue = localStorage.getItem(`form_${element.id}`);
+            if (savedValue !== null) {
+                try {
+                    const parsedValue = JSON.parse(savedValue);
+                    if (element.type === 'checkbox' || element.type === 'radio') {
+                        element.checked = parsedValue;
+                    } else {
+                        element.value = parsedValue;
+                    }
+                    // Trigger change event to update any calculated fields
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                } catch (e) {
+                    console.warn(`Failed to restore value for ${element.id}:`, e);
+                }
+            }
+        }
+    });
+}
+
+// Initialize tab event listeners and form persistence
 document.addEventListener('DOMContentLoaded', () => {
     // Set up tab navigation
     document.querySelectorAll('.tab-button').forEach(button => {
@@ -138,4 +168,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error("Tab buttons or content panels not found on DOM load.");
     }
+
+    // Set up form persistence
+    document.addEventListener('input', (e) => {
+        saveFormValue(e.target);
+    });
+
+    document.addEventListener('change', (e) => {
+        saveFormValue(e.target);
+    });
+
+    // Restore form data after a brief delay to ensure all elements are loaded
+    setTimeout(restoreFormData, 100);
 });

@@ -5,7 +5,6 @@ camera_bp = Blueprint('camera', __name__, url_prefix='/api/camera')
 capture_bp = Blueprint('capture', __name__, url_prefix='/api/capture')
 preview_bp = Blueprint('preview', __name__, url_prefix='/api/preview')
 timelapse_bp = Blueprint('timelapse', __name__, url_prefix='/api/timelapse')
-processing_bp = Blueprint('processing', __name__, url_prefix='/api/process')
 
 # Create a separate blueprint for main routes
 main_bp = Blueprint('main', __name__)
@@ -43,4 +42,3 @@ from app.routes.camera import *
 from app.routes.capture import *
 from app.routes.preview import *
 from app.routes.timelapse import *
-from app.routes.processing import *
