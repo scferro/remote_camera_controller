@@ -215,13 +215,48 @@ function startTimelapseStatusPolling(totalCount) {
             if (!backendIsActive && window.isTimelapseActive) {
                 // Timelapse finished or stopped according to backend
                 console.log("Timelapse finished or stopped according to status poll.");
+
+                // Clear timelapse state immediately
                 clearInterval(timelapseStatusIntervalId);
                 timelapseStatusIntervalId = null;
                 window.isTimelapseActive = false;
+
+                // Handle preview restart asynchronously to avoid blocking the polling
+                const wasPreviewActive = window.isPreviewActive;
+
                 // Update controls based on actual camera status
-                listTimelapses(); // Refresh the list of sequences
                 if (typeof window.getCameraStatus === 'function') {
-                    window.getCameraStatus(); // Refresh main status/buttons
+                    window.getCameraStatus(); // Don't await to avoid blocking
+                }
+
+                // Handle preview stopping and restarting in the background
+                if (wasPreviewActive) {
+                    console.log("Handling preview restart after timelapse completion...");
+                    // Stop and restart preview with a delay to allow camera cleanup
+                    if (typeof window.stopPreview === 'function') {
+                        window.stopPreview().then(() => {
+                            console.log("Preview stopped, restarting in 2 seconds...");
+                            setTimeout(() => {
+                                if (typeof window.startPreview === 'function') {
+                                    console.log("Restarting preview after timelapse completion...");
+                                    window.startPreview();
+                                }
+                            }, 2000); // 2 second delay for camera cleanup
+                        }).catch(e => {
+                            console.error("Error stopping preview during timelapse completion:", e);
+                            // Try to restart anyway after delay
+                            setTimeout(() => {
+                                if (typeof window.startPreview === 'function') {
+                                    window.startPreview();
+                                }
+                            }, 2000);
+                        });
+                    }
+                }
+
+                // Refresh the list of sequences
+                if (typeof window.listTimelapses === 'function') {
+                    window.listTimelapses();
                 }
             }
             // Update client state if backend says active but client thought it wasn't (e.g. page reload)
