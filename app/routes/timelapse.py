@@ -2,38 +2,36 @@ import os
 import datetime
 import threading
 import time
-from flask import current_app, jsonify, request, copy_current_request_context
+from flask import current_app, jsonify, request
 from app.routes import timelapse_bp
 from app.routes.camera import get_camera
 from app.config import TIMELAPSE_DIR
 
-def run_timelapse(app, interval, count, format_override):
+def run_timelapse(app, interval, count):
     """Background thread function for timelapse capture."""
-    # Use the passed app instance instead of trying to get it from current_app
     logger = app.logger
-    
-    logger.info(f"Timelapse thread started. Interval: {interval}s, Count: {count}, Format: {format_override}")
-    
-    # Use app context to ensure proper access to app attributes
+
+    logger.info(f"Timelapse thread started. Interval: {interval}s, Count: {count}")
+
     with app.app_context():
         cam = get_camera()
-        
+
         if not cam:
             logger.error("Timelapse thread: Camera not available.")
             app.timelapse_status = {
-                "active": False, 
-                "message": "Error: Camera not available", 
-                "count": 0, 
-                "total": count, 
+                "active": False,
+                "message": "Error: Camera not available",
+                "count": 0,
+                "total": count,
                 "folder": None
             }
             return
 
-        # Create unique folder for this timelapse sequence
+        # Create unique folder for this timelapse sequence (for metadata/tracking)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         sequence_folder_name = f"{timestamp}_timelapse_{count}x{interval}s"
         sequence_path = os.path.join(TIMELAPSE_DIR, sequence_folder_name)
-        
+
         try:
             os.makedirs(sequence_path)
             logger.info(f"Created timelapse directory: {sequence_path}")
@@ -41,10 +39,10 @@ def run_timelapse(app, interval, count, format_override):
         except OSError as e:
             logger.error(f"Failed to create timelapse directory {sequence_path}: {e}")
             app.timelapse_status = {
-                "active": False, 
-                "message": f"Error: Cannot create directory {sequence_folder_name}", 
-                "count": 0, 
-                "total": count, 
+                "active": False,
+                "message": f"Error: Cannot create directory {sequence_folder_name}",
+                "count": 0,
+                "total": count,
                 "folder": None
             }
             return
@@ -63,21 +61,19 @@ def run_timelapse(app, interval, count, format_override):
             app.timelapse_status["message"] = f"Capturing image {i+1} of {count}..."
             logger.info(app.timelapse_status["message"])
 
-            cycle_start = time.time()  # Start timer immediately before capture
+            cycle_start = time.time()
 
             try:
-                # Build a full file path using save_path keyword
-                photo_file = os.path.join(sequence_path, f"{i+1:04d}.jpg")
-                success, filepath = cam.capture_image(save_path=photo_file)
-                
+                success, filepath_info = cam.capture_image()
+
                 if success:
-                    logger.info(f"Image {i+1} captured successfully: {filepath}")
+                    logger.info(f"Image {i+1} captured successfully: {filepath_info}")
                 else:
                     logger.error(f"Failed to capture image {i+1}.")
                     app.timelapse_status["message"] = f"Error capturing image {i+1}. Stopping."
                     app.timelapse_status["active"] = False
                     return
-                    
+
             except Exception as e:
                 logger.error(f"Exception during timelapse capture {i+1}: {e}", exc_info=True)
                 app.timelapse_status["message"] = f"Error capturing image {i+1}. Stopping."
@@ -96,7 +92,7 @@ def run_timelapse(app, interval, count, format_override):
                     return
 
         logger.info("Timelapse sequence completed.")
-        app.timelapse_status["message"] = f"Completed {count} images in folder {sequence_folder_name}."
+        app.timelapse_status["message"] = f"Completed {count} images. Files saved to camera card."
         app.timelapse_status["active"] = False
 
 @timelapse_bp.route('/start', methods=['POST'])
@@ -115,7 +111,6 @@ def start_timelapse_api():
     try:
         interval = int(data.get('interval', 5))
         count = int(data.get('count', 100))
-        format_override = data.get('format', 'current')  # e.g., 'RAW', 'JPEG', 'current'
         if interval <= 0 or count <= 0:
             raise ValueError("Interval and count must be positive.")
     except (ValueError, TypeError, KeyError) as e:
@@ -128,13 +123,13 @@ def start_timelapse_api():
 
     app.timelapse_active.clear()  # Clear stop flag
     app.timelapse_status = {"active": True, "message": "Starting...", "count": 0, "total": count, "folder": None}
-    
+
     # Get a reference to the current app for the thread
     app_instance = current_app._get_current_object()
-    
+
     app.timelapse_thread = threading.Thread(
         target=run_timelapse,
-        args=(app_instance, interval, count, format_override),  # Pass app instance to the thread
+        args=(app_instance, interval, count),
         name="TimelapseThread",
         daemon=True
     )

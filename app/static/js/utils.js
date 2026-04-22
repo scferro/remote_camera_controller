@@ -39,7 +39,7 @@ async function fetchApi(url, options = {}, showLoading = true) {
         if (!response.ok) {
             console.error(`API Error ${response.status}: ${response.statusText} for ${url}`);
             // Handle both camera status and settings endpoints silently when camera is disconnected
-            if (url.includes('/api/camera/status') || url.includes('/api/camera/settings')) {
+            if (url.includes('/api/camera/status') || url.includes('/api/camera/settings') || url.includes('/api/camera/quality')) {
                 return null;
             }
             try {

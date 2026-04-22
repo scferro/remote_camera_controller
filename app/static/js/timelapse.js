@@ -147,7 +147,7 @@ async function startTimelapse() {
     disableControls(true);
     if (btnStartTimelapse) btnStartTimelapse.disabled = true;
     if (btnStopTimelapse) btnStopTimelapse.disabled = false;
-    
+
     const data = await fetchApi('/api/timelapse/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

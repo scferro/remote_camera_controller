@@ -65,7 +65,7 @@ def set_camera_setting_api(setting_name):
     """API endpoint to set a specific camera setting."""
     if not request.is_json:
         return jsonify({
-            "success": False, 
+            "success": False,
             "message": "Invalid request: Content-Type must be application/json"
         }), 400
 
@@ -74,7 +74,7 @@ def set_camera_setting_api(setting_name):
 
     if value is None:
         return jsonify({
-            "success": False, 
+            "success": False,
             "message": "Invalid request: 'value' field missing in JSON body"
         }), 400
 
@@ -88,3 +88,20 @@ def set_camera_setting_api(setting_name):
         return jsonify({"success": success, "message": message})
     else:
         return jsonify({"success": False, "message": "Camera not available."}), 503
+
+@camera_bp.route('/quality', methods=['GET'])
+def get_camera_quality_api():
+    """API endpoint to get the current image quality setting."""
+    current_app.logger.debug("API request: /api/camera/quality")
+    cam = get_camera()
+
+    if not cam:
+        return jsonify({"error": "Camera not available."}), 503
+
+    # Try known widget names for image quality
+    for name in ["imagequality", "capturequality", "compressionsetting"]:
+        value = cam.get_config(name)
+        if value is not None:
+            return jsonify({"current": str(value)})
+
+    return jsonify({"current": "N/A"})

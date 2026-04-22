@@ -262,6 +262,15 @@ class CameraHandler:
                 except Exception as e_range:
                     log.error(f"Unexpected error getting range for widget '{widget_name}': {e_range}", exc_info=True)
 
+            if widget_type_enum in [gp.GP_WIDGET_RADIO, gp.GP_WIDGET_MENU]:
+                try:
+                    choices = [str(widget.get_choice(i)) for i in range(widget.count_choices()) if widget.get_choice(i) is not None]
+                    widget_info["choices"] = choices
+                except gp.GPhoto2Error as e:
+                    log.warning(f"Could not get choices for widget '{widget_name}': {e.string}")
+                except Exception as e_choices:
+                    log.error(f"Unexpected error getting choices for widget '{widget_name}': {e_choices}", exc_info=True)
+
             children_dict = {}
             try:
                 children = widget.get_children()
@@ -502,10 +511,10 @@ class CameraHandler:
                      except OSError: pass
                  return False
 
-    def capture_image(self, save_path):
+    def capture_image(self):
         """
-        Captures a full-resolution image, downloads it, saves it to the specified file path,
-        attempts to delete it from the camera, then fully disconnects to ensure a fresh connection next time.
+        Captures a full-resolution image. The file stays on the camera's SD card.
+        Uses whatever image quality the camera is currently set to.
         """
         with self.lock:
             if not self._ensure_camera_connected():
@@ -516,35 +525,11 @@ class CameraHandler:
                 file_path = self.camera.capture(gp.GP_CAPTURE_IMAGE, self.context)
                 log.info(f"Image captured on camera: Folder: '{file_path.folder}', Name: '{file_path.name}'")
 
-                log.info(f"Downloading {file_path.name} from {file_path.folder}...")
-                camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-                log.info("Image data downloaded from camera.")
-
-                # --- Preserve original extension ---
-                orig_ext = os.path.splitext(file_path.name)[1]
-                base_save_path, _ = os.path.splitext(save_path)
-                save_path_with_ext = base_save_path + orig_ext
-                # -----------------------------------
-
-                camera_file.save(save_path_with_ext)
-                log.info(f"Image successfully saved to {save_path_with_ext}")
-
-                try:
-                    log.info(f"Attempting to delete '{file_path.name}' from camera folder '{file_path.folder}'...")
-                    self.camera.file_delete(file_path.folder, file_path.name)
-                    log.info(f"Successfully deleted '{file_path.name}' from camera.")
-                except gp.GPhoto2Error as del_ex:
-                    log.warning(f"Could not delete image from camera: {del_ex.code} - {del_ex.string}")
-                except Exception as del_e:
-                    log.warning(f"Unexpected error deleting image from camera: {del_e}", exc_info=True)
-
-                # Fully disconnect the camera after the capture
                 self._release_camera()
-
-                return True, save_path_with_ext
+                return True, f"{file_path.folder}/{file_path.name}"
 
             except gp.GPhoto2Error as ex:
-                log.error(f"gphoto2 error during image capture/download: {ex.code} - {ex.string}")
+                log.error(f"gphoto2 error during image capture: {ex.code} - {ex.string}")
                 if ex.code in [gp.GP_ERROR_IO, gp.GP_ERROR_CAMERA_ERROR, gp.GP_ERROR_TIMEOUT, gp.GP_ERROR_CAMERA_BUSY]:
                     log.warning("Potential connection issue during capture. Releasing camera handle.")
                     self._release_camera()
