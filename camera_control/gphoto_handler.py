@@ -874,18 +874,14 @@ class CameraHandler:
                 
                 # Try RAW type first
                 try:
-                    raw_file = gp.CameraFile()
-                    self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_RAW, raw_file, self.context)
-                    camera_file = raw_file
+                    camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_RAW)
                     file_type_used = "RAW"
                     log.info("Downloaded full-resolution file (type=RAW)")
                 except gp.GPhoto2Error as raw_err:
                     # Fall back to NORMAL if RAW fails
                     log.debug(f"RAW type failed ({raw_err.string}), trying NORMAL...")
                     try:
-                        norm_file = gp.CameraFile()
-                        self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, norm_file, self.context)
-                        camera_file = norm_file
+                        camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
                         file_type_used = "NORMAL"
                         log.info("Downloaded file (type=NORMAL)")
                     except gp.GPhoto2Error as norm_err:
