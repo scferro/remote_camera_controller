@@ -493,7 +493,16 @@ class CameraHandler:
             if not self._ensure_camera_connected():
                 return None
             try:
-                return self._describe_widget_options(self._SIZE_SETTING_CANDIDATES)
+                result = self._describe_widget_options(self._SIZE_SETTING_CANDIDATES)
+                if result and result.get('choices'):
+                    # Enhance choices with dimension info for Sony cameras
+                    enhanced_choices = []
+                    for choice in result['choices']:
+                        # If it's a Sony size label, add dimension info
+                        display_name = self.SONY_SIZE_LABELS.get(str(choice), str(choice))
+                        enhanced_choices.append(display_name)
+                    result['enhanced_choices'] = enhanced_choices
+                return result
             except Exception as e:
                 log.error(f"Unexpected error getting size options: {e}", exc_info=True)
                 return None
@@ -576,6 +585,17 @@ class CameraHandler:
     # left at a small value, JPEG captures come out at low resolution even when
     # quality is set to "Fine".
     _SIZE_SETTING_CANDIDATES = ("imagesize", "resolution", "size", "imagesizesetting")
+    
+    # Sony-specific mapping from size labels to approximate megapixels/dimensions
+    # For Sony A7C II (33MP): Large=~33MP, Medium=~14MP, Small=~8MP
+    SONY_SIZE_LABELS = {
+        "Large": "6000x4000 (33MP)",
+        "Medium": "4000x2664 (14MP)",
+        "Small": "3000x2000 (8MP)",
+        "L": "6000x4000 (33MP)",
+        "M": "4000x2664 (14MP)",
+        "S": "3000x2000 (8MP)",
+    }
 
     def _pick_format_choice(self, choices, format_type):
         """Picks the best choice string for 'jpeg' or 'raw' from a widget's choice list."""

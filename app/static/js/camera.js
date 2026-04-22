@@ -319,17 +319,30 @@ async function initResolutionDropdown() {
             return;
         }
 
+        // Use enhanced_choices if available (has dimension info), otherwise fall back to choices
+        const displayChoices = data.enhanced_choices || data.choices;
+        const actualChoices = data.choices; // Original values for setting
+        
         const saved = readPref(RESOLUTION_PREF_KEY);
         let initial;
-        if (saved && data.choices.includes(saved)) {
+        if (saved && actualChoices.includes(saved)) {
             initial = saved;
-        } else if (data.current && data.choices.includes(String(data.current))) {
+        } else if (data.current && actualChoices.includes(String(data.current))) {
             initial = String(data.current);
         } else {
-            initial = pickLargestResolution(data.choices);
+            initial = pickLargestResolution(actualChoices);
         }
 
-        populateSelect(selectEl, data.choices, initial);
+        // Populate with display names but store mapping to actual values
+        selectEl.innerHTML = '';
+        displayChoices.forEach((displayName, idx) => {
+            const opt = document.createElement('option');
+            opt.value = actualChoices[idx]; // Store actual value
+            opt.textContent = displayName; // Show enhanced name
+            selectEl.appendChild(opt);
+        });
+        
+        selectEl.value = initial;
         selectEl.dataset.settingName = data.setting;
         selectEl.disabled = !!data.readonly;
 
