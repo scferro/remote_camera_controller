@@ -866,8 +866,22 @@ class CameraHandler:
                 log.info(f"Image captured on camera: Folder: '{file_path.folder}', Name: '{file_path.name}'")
 
                 log.info(f"Downloading {file_path.name} from {file_path.folder}...")
-                camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-                log.info("Image data downloaded from camera.")
+                
+                # Try to get the full-resolution file first (GP_FILE_TYPE_RAW)
+                # Some cameras (including Sony) store full-res as RAW even for JPEG captures
+                camera_file = None
+                file_type_used = gp.GP_FILE_TYPE_RAW
+                try:
+                    camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_RAW, self.context)
+                    log.info(f"Downloaded full-resolution file (type=RAW)")
+                except gp.GPhoto2Error as raw_err:
+                    # Fall back to NORMAL if RAW fails
+                    log.debug(f"RAW type failed ({raw_err.string}), trying NORMAL...")
+                    camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, self.context)
+                    file_type_used = gp.GP_FILE_TYPE_NORMAL
+                    log.info(f"Downloaded file (type=NORMAL)")
+                
+                log.info(f"Image data downloaded from camera ({file_type_used}).")
 
                 # --- Preserve original extension ---
                 orig_ext = os.path.splitext(file_path.name)[1]
