@@ -870,16 +870,41 @@ class CameraHandler:
                 # Try to get the full-resolution file first (GP_FILE_TYPE_RAW)
                 # Some cameras (including Sony) store full-res as RAW even for JPEG captures
                 camera_file = None
-                file_type_used = gp.GP_FILE_TYPE_RAW
+                file_type_used = None
+                
+                # Try RAW type first
                 try:
-                    camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_RAW, self.context)
-                    log.info(f"Downloaded full-resolution file (type=RAW)")
+                    raw_file = gp.CameraFile()
+                    self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_RAW, raw_file, self.context)
+                    camera_file = raw_file
+                    file_type_used = "RAW"
+                    log.info("Downloaded full-resolution file (type=RAW)")
                 except gp.GPhoto2Error as raw_err:
                     # Fall back to NORMAL if RAW fails
                     log.debug(f"RAW type failed ({raw_err.string}), trying NORMAL...")
-                    camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, self.context)
-                    file_type_used = gp.GP_FILE_TYPE_NORMAL
-                    log.info(f"Downloaded file (type=NORMAL)")
+                    try:
+                        norm_file = gp.CameraFile()
+                        self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, norm_file, self.context)
+                        camera_file = norm_file
+                        file_type_used = "NORMAL"
+                        log.info("Downloaded file (type=NORMAL)")
+                    except gp.GPhoto2Error as norm_err:
+                        log.error(f"Both RAW and NORMAL failed: RAW={raw_err.string}, NORMAL={norm_err.string}")
+                        self._restore_capture_format_locked(
+                            format_widget_name, original_format_value,
+                            size_widget_name, original_size_value,
+                        )
+                        self._release_camera()
+                        return False, None
+                
+                if camera_file is None:
+                    log.error("Failed to download image - camera_file is None")
+                    self._restore_capture_format_locked(
+                        format_widget_name, original_format_value,
+                        size_widget_name, original_size_value,
+                    )
+                    self._release_camera()
+                    return False, None
                 
                 log.info(f"Image data downloaded from camera ({file_type_used}).")
 
