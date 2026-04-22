@@ -7,12 +7,17 @@ from app.routes import timelapse_bp
 from app.routes.camera import get_camera
 from app.config import TIMELAPSE_DIR
 
-def run_timelapse(app, interval, count, format_override):
-    """Background thread function for timelapse capture."""
+def run_timelapse(app, interval, count):
+    """Background thread function for timelapse capture.
+
+    Timelapse captures are always taken as JPEG for reliability and speed
+    (smaller files, faster download, no RAW processing step). Single captures
+    still honor the camera's current format setting — see capture.py.
+    """
     # Use the passed app instance instead of trying to get it from current_app
     logger = app.logger
-    
-    logger.info(f"Timelapse thread started. Interval: {interval}s, Count: {count}, Format: {format_override}")
+
+    logger.info(f"Timelapse thread started. Interval: {interval}s, Count: {count}, Format: jpeg")
     
     # Use app context to ensure proper access to app attributes
     with app.app_context():
@@ -66,9 +71,12 @@ def run_timelapse(app, interval, count, format_override):
             cycle_start = time.time()  # Start timer immediately before capture
 
             try:
-                # Build a full file path using save_path keyword
+                # Build a full file path using save_path keyword.
+                # Force JPEG mode for the whole sequence; capture_image will fall back
+                # to the camera's current setting if the camera doesn't expose the
+                # image-format widget (and will log a warning).
                 photo_file = os.path.join(sequence_path, f"{i+1:04d}.jpg")
-                success, filepath = cam.capture_image(save_path=photo_file)
+                success, filepath = cam.capture_image(save_path=photo_file, format="jpeg")
                 
                 if success:
                     logger.info(f"Image {i+1} captured successfully: {filepath}")
@@ -115,7 +123,6 @@ def start_timelapse_api():
     try:
         interval = int(data.get('interval', 5))
         count = int(data.get('count', 100))
-        format_override = data.get('format', 'current')  # e.g., 'RAW', 'JPEG', 'current'
         if interval <= 0 or count <= 0:
             raise ValueError("Interval and count must be positive.")
     except (ValueError, TypeError, KeyError) as e:
@@ -128,13 +135,13 @@ def start_timelapse_api():
 
     app.timelapse_active.clear()  # Clear stop flag
     app.timelapse_status = {"active": True, "message": "Starting...", "count": 0, "total": count, "folder": None}
-    
+
     # Get a reference to the current app for the thread
     app_instance = current_app._get_current_object()
-    
+
     app.timelapse_thread = threading.Thread(
         target=run_timelapse,
-        args=(app_instance, interval, count, format_override),  # Pass app instance to the thread
+        args=(app_instance, interval, count),
         name="TimelapseThread",
         daemon=True
     )

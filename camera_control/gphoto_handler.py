@@ -502,14 +502,153 @@ class CameraHandler:
                      except OSError: pass
                  return False
 
-    def capture_image(self, save_path):
+    # Candidate gphoto2 setting names that control capture format/quality.
+    # Tried in order; first one found on the camera is used.
+    _FORMAT_SETTING_CANDIDATES = ("imagequality", "capturequality", "compressionsetting")
+
+    def _pick_format_choice(self, choices, format_type):
+        """Picks the best choice string for 'jpeg' or 'raw' from a widget's choice list."""
+        str_choices = [str(c) for c in choices if c is not None]
+
+        if format_type == "jpeg":
+            # Prefer higher-quality JPEG options; explicitly avoid anything involving RAW.
+            for preferred in ("Extra Fine", "X.Fine", "Fine", "Standard", "Normal"):
+                if preferred in str_choices:
+                    return preferred
+            for c in str_choices:
+                if "raw" not in c.lower():
+                    return c
+            return None
+
+        if format_type == "raw":
+            if "RAW" in str_choices:
+                return "RAW"
+            # Prefer pure RAW over combined RAW+JPEG.
+            for c in str_choices:
+                cl = c.lower().replace(" ", "")
+                if cl == "raw":
+                    return c
+            for c in str_choices:
+                cl = c.lower()
+                if "raw" in cl and "jpeg" not in cl and "jpg" not in cl:
+                    return c
+            for c in str_choices:
+                if "raw" in c.lower():
+                    return c
+            return None
+
+        return None
+
+    def _switch_capture_format_locked(self, format_type):
+        """
+        Switches the camera's image-format setting to 'jpeg' or 'raw'.
+        Returns (original_value, widget_name) so the caller can restore it, or
+        (None, None) if no change was made or the setting is unsupported.
+        Caller MUST hold self.lock.
+        """
+        if format_type not in ("jpeg", "raw"):
+            return None, None
+
+        try:
+            config = self.camera.get_config(self.context)
+        except Exception as e:
+            log.warning(f"Could not fetch config for format switching: {e}")
+            return None, None
+
+        widget = None
+        widget_name = None
+        for candidate in self._FORMAT_SETTING_CANDIDATES:
+            try:
+                found = config.get_child_by_name(candidate)
+                if found is not None:
+                    widget = found
+                    widget_name = candidate
+                    break
+            except gp.GPhoto2Error:
+                continue
+
+        if widget is None:
+            log.warning(
+                f"No image-format setting found on camera (tried {list(self._FORMAT_SETTING_CANDIDATES)}). "
+                f"Capturing with current camera setting."
+            )
+            return None, None
+
+        if widget.get_readonly():
+            log.warning(f"Image-format setting '{widget_name}' is read-only; cannot switch format.")
+            return None, None
+
+        try:
+            current_value = widget.get_value()
+            choices = [widget.get_choice(i) for i in range(widget.count_choices())]
+        except Exception as e:
+            log.warning(f"Could not read choices for '{widget_name}': {e}")
+            return None, None
+
+        target_value = self._pick_format_choice(choices, format_type)
+        if target_value is None:
+            log.warning(
+                f"No suitable '{format_type}' option in '{widget_name}' choices {choices}. "
+                f"Capturing with current setting."
+            )
+            return None, None
+
+        if str(current_value) == str(target_value):
+            log.debug(f"'{widget_name}' already '{current_value}'; no switch needed.")
+            return None, None
+
+        log.info(f"Switching '{widget_name}' from '{current_value}' to '{target_value}' for {format_type} capture.")
+        try:
+            widget.set_value(target_value)
+            self.camera.set_config(config, self.context)
+            return current_value, widget_name
+        except gp.GPhoto2Error as ex:
+            log.warning(f"Failed to set '{widget_name}' to '{target_value}': {ex.string}")
+            return None, None
+
+    def _restore_capture_format_locked(self, widget_name, original_value):
+        """Restores a previously-changed image-format setting. Caller MUST hold self.lock."""
+        if not widget_name or original_value is None:
+            return
+        if not self.camera:
+            log.debug(f"Cannot restore '{widget_name}': camera no longer connected.")
+            return
+        try:
+            config = self.camera.get_config(self.context)
+            widget = config.get_child_by_name(widget_name)
+            if widget is None:
+                log.warning(f"Could not find '{widget_name}' to restore format.")
+                return
+            widget.set_value(original_value)
+            self.camera.set_config(config, self.context)
+            log.info(f"Restored '{widget_name}' to '{original_value}'.")
+        except Exception as e:
+            log.warning(f"Failed to restore '{widget_name}' to '{original_value}': {e}")
+
+    def capture_image(self, save_path, format="current"):
         """
         Captures a full-resolution image, downloads it, saves it to the specified file path,
         attempts to delete it from the camera, then fully disconnects to ensure a fresh connection next time.
+
+        Args:
+            save_path: File path to save the downloaded image to. The extension is replaced
+                with the one the camera returns (e.g. .jpg, .arw).
+            format: One of "current" (default — use camera's current setting), "jpeg", or "raw".
+                When "jpeg" or "raw", the camera's image-quality setting is temporarily switched
+                for the capture and restored afterwards. If the camera does not expose the
+                setting, capture proceeds with the current setting and a warning is logged.
         """
         with self.lock:
             if not self._ensure_camera_connected():
                 return False, None
+
+            original_format_value = None
+            format_widget_name = None
+            if format and format != "current":
+                if format not in ("jpeg", "raw"):
+                    log.warning(f"Unknown format '{format}'; using camera's current setting.")
+                else:
+                    original_format_value, format_widget_name = self._switch_capture_format_locked(format)
 
             try:
                 log.info("Capturing image...")
@@ -538,6 +677,10 @@ class CameraHandler:
                 except Exception as del_e:
                     log.warning(f"Unexpected error deleting image from camera: {del_e}", exc_info=True)
 
+                # Restore the original image-format setting (if we changed it) before releasing.
+                if original_format_value is not None and format_widget_name:
+                    self._restore_capture_format_locked(format_widget_name, original_format_value)
+
                 # Fully disconnect the camera after the capture
                 self._release_camera()
 
@@ -545,12 +688,17 @@ class CameraHandler:
 
             except gp.GPhoto2Error as ex:
                 log.error(f"gphoto2 error during image capture/download: {ex.code} - {ex.string}")
+                # Best-effort restore before releasing.
+                if original_format_value is not None and format_widget_name:
+                    self._restore_capture_format_locked(format_widget_name, original_format_value)
                 if ex.code in [gp.GP_ERROR_IO, gp.GP_ERROR_CAMERA_ERROR, gp.GP_ERROR_TIMEOUT, gp.GP_ERROR_CAMERA_BUSY]:
                     log.warning("Potential connection issue during capture. Releasing camera handle.")
                     self._release_camera()
                 return False, None
             except Exception as e:
                 log.error(f"Unexpected error capturing image: {e}", exc_info=True)
+                if original_format_value is not None and format_widget_name:
+                    self._restore_capture_format_locked(format_widget_name, original_format_value)
                 self._release_camera()
                 return False, None
 

@@ -8,12 +8,17 @@ A web-based application to remotely control and manage USB-connected cameras (pr
 * **Live Preview:** View a live feed from the camera (configurable frame rate).
 * **Camera Status:** See connection status and camera model.
 * **Settings Display:** View camera settings (ISO, Aperture, Shutter Speed, etc.) dynamically based on camera capabilities.
-* **Single Capture:** Trigger single image captures (RAW or JPEG based on camera setting). Images are downloaded to the server.
-* **Timelapse Control:** Start and stop timelapse sequences with configurable interval and image count. Images are saved in dedicated folders.
-* **(Planned) Image Processing:**
-    * RAW processing controls for single images (using rawpy).
-    * Batch RAW processing for timelapse sequences.
-    * Timelapse video assembly (using ffmpeg) with configurable resolution, frame rate, and cropping.
+* **✅ Single Capture:** Trigger single image captures that honor the camera's current format setting (RAW, JPEG, or RAW+JPEG). Images are downloaded to the server with their original extension preserved.
+* **✅ Timelapse Control:** Start and stop timelapse sequences with configurable interval and image count. Images are saved in dedicated, timestamped folders.
+* **✅ Format Switching:** `capture_image()` accepts a `format` argument (`"current"`, `"jpeg"`, or `"raw"`) and temporarily switches the camera's image-quality setting for the duration of the capture, then restores the previous value. Timelapse captures always use JPEG for reliability (smaller files, faster downloads, shorter cycle times); single captures continue to use the camera's current setting. If the camera does not expose an image-quality widget, capture falls back to the current setting with a warning.
+
+## Roadmap
+
+The following features are planned but not yet implemented:
+
+* **🚧 RAW Processing (single images):** On-server RAW development using `rawpy` with adjustable exposure, white balance, and tone controls.
+* **🚧 Batch RAW Processing:** Apply consistent processing settings across every frame of a timelapse sequence.
+* **🚧 Timelapse Video Assembly:** Stitch a timelapse sequence into a video using `ffmpeg`, with configurable resolution, frame rate, and cropping.
 
 ## Prerequisites
 
@@ -74,8 +79,8 @@ A web-based application to remotely control and manage USB-connected cameras (pr
 2.  Navigate to `http://<ip_address_of_computer>:5000` (e.g., `http://192.168.1.100:5000`).
 3.  Use the web interface:
     * **Live Control Tab:** View status, start/stop preview, change settings, capture single images, and control timelapse sequences.
-    * **Timelapse Processing Tab:** View completed timelapse folders and (planned) process them into videos.
-    * **Single Image Processing Tab:** (Planned) Process individual captured images.
+    * **Timelapse Processing Tab:** View completed timelapse folders. Video assembly from these folders is on the roadmap (see above).
+    * **Single Image Processing Tab:** RAW development of individual captured images is on the roadmap (see above).
 
 ## License
 
