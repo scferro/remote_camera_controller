@@ -14,6 +14,19 @@
 
 <div class="panel">
     <h2 class="panel-title">Capture Actions</h2>
+    <div class="setting-group">
+        <label class="setting-label" for="select-resolution">Resolution</label>
+        <select id="select-resolution" class="w-full" data-no-persist="true">
+            <option>Loading...</option>
+        </select>
+    </div>
+    <div class="setting-group">
+        <label class="setting-label" for="select-image-type">Image Type</label>
+        <select id="select-image-type" class="w-full" data-no-persist="true">
+            <option>Loading...</option>
+        </select>
+        <p id="image-type-note" class="text-xs text-gray-500 mt-1 hidden">Timelapse uses JPEG only</p>
+    </div>
     <div class="mb-4 pb-4 border-b border-dashed">
         <button id="btn-capture-single" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-medium">Capture Single Image</button>
         <p id="capture-status" class="text-sm text-gray-600 mt-2">Status: Idle</p>

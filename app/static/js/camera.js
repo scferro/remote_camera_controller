@@ -72,16 +72,26 @@ function updateButtonStates() {
     const btnStopPreview = document.getElementById('btn-stop-preview');
     const btnStartTimelapse = document.getElementById('btn-start-timelapse');
     const btnStopTimelapse = document.getElementById('btn-stop-timelapse');
-    
+    const selectImageType = document.getElementById('select-image-type');
+    const imageTypeNote = document.getElementById('image-type-note');
+
     // Get state from window (shared with other modules)
     const isPreviewActive = window.isPreviewActive || false;
     const isTimelapseActive = window.isTimelapseActive || false;
-    
+
     if (btnStartPreview) btnStartPreview.disabled = isPreviewActive;
     if (btnStopPreview) btnStopPreview.disabled = !isPreviewActive;
     if (btnCaptureSingle) btnCaptureSingle.disabled = isTimelapseActive;
     if (btnStartTimelapse) btnStartTimelapse.disabled = isTimelapseActive;
     if (btnStopTimelapse) btnStopTimelapse.disabled = !isTimelapseActive;
+
+    if (selectImageType && !selectImageType.dataset.unavailable) {
+        selectImageType.disabled = isTimelapseActive;
+        selectImageType.title = isTimelapseActive ? 'Timelapse uses JPEG only' : '';
+    }
+    if (imageTypeNote) {
+        imageTypeNote.classList.toggle('hidden', !isTimelapseActive);
+    }
 }
 
 // --- Camera Settings ---
@@ -222,11 +232,143 @@ async function captureSingle() {
     getCameraStatus();
 }
 
+// --- Capture Settings Dropdowns (Resolution, Image Type) ---
+const RESOLUTION_PREF_KEY = 'capture_pref_resolution';
+const IMAGE_TYPE_PREF_KEY = 'capture_pref_image_type';
+
+function readPref(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw === null ? null : JSON.parse(raw);
+    } catch (e) {
+        return null;
+    }
+}
+
+function writePref(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+        console.warn(`Could not persist ${key}:`, e);
+    }
+}
+
+function markDropdownUnavailable(selectEl, label) {
+    selectEl.innerHTML = `<option>${label}</option>`;
+    selectEl.disabled = true;
+    selectEl.dataset.unavailable = 'true';
+}
+
+function pickLargestResolution(choices) {
+    let best = null;
+    let bestPixels = -1;
+    for (const c of choices) {
+        const m = c.match(/(\d+)\s*[xX×]\s*(\d+)/);
+        if (m) {
+            const p = parseInt(m[1], 10) * parseInt(m[2], 10);
+            if (p > bestPixels) { bestPixels = p; best = c; }
+        }
+    }
+    if (best) return best;
+    for (const pref of ['Large', 'L']) {
+        const found = choices.find(c => c === pref || c.startsWith(pref + ':') || c.startsWith(pref + ' '));
+        if (found) return found;
+    }
+    return choices[0] || null;
+}
+
+function populateSelect(selectEl, choices, selected) {
+    selectEl.innerHTML = '';
+    choices.forEach(choice => {
+        const opt = document.createElement('option');
+        opt.value = choice;
+        opt.textContent = choice;
+        selectEl.appendChild(opt);
+    });
+    if (selected != null && choices.includes(selected)) {
+        selectEl.value = selected;
+    }
+}
+
+async function initResolutionDropdown() {
+    const selectEl = document.getElementById('select-resolution');
+    if (!selectEl) return;
+
+    const data = await fetchApi('/api/camera/sizes', {}, false);
+    if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+        markDropdownUnavailable(selectEl, 'Unavailable');
+        return;
+    }
+
+    const saved = readPref(RESOLUTION_PREF_KEY);
+    let initial;
+    if (saved && data.choices.includes(saved)) {
+        initial = saved;
+    } else if (data.current && data.choices.includes(String(data.current))) {
+        initial = String(data.current);
+    } else {
+        initial = pickLargestResolution(data.choices);
+    }
+
+    populateSelect(selectEl, data.choices, initial);
+    selectEl.dataset.settingName = data.setting;
+    selectEl.disabled = !!data.readonly;
+
+    if (initial && String(data.current) !== initial && !data.readonly) {
+        setCameraSetting(data.setting, initial);
+    }
+
+    selectEl.addEventListener('change', () => {
+        const val = selectEl.value;
+        if (!val) return;
+        writePref(RESOLUTION_PREF_KEY, val);
+        setCameraSetting(selectEl.dataset.settingName, val);
+    });
+}
+
+async function initImageTypeDropdown() {
+    const selectEl = document.getElementById('select-image-type');
+    if (!selectEl) return;
+
+    const data = await fetchApi('/api/camera/image-types', {}, false);
+    if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+        markDropdownUnavailable(selectEl, 'Unavailable');
+        return;
+    }
+
+    const saved = readPref(IMAGE_TYPE_PREF_KEY);
+    let initial;
+    if (saved && data.choices.includes(saved)) {
+        initial = saved;
+    } else if (data.current && data.choices.includes(String(data.current))) {
+        initial = String(data.current);
+    } else {
+        initial = data.choices[0];
+    }
+
+    populateSelect(selectEl, data.choices, initial);
+    selectEl.dataset.settingName = data.setting;
+
+    if (initial && String(data.current) !== initial && !data.readonly) {
+        setCameraSetting(data.setting, initial);
+    }
+
+    selectEl.addEventListener('change', () => {
+        const val = selectEl.value;
+        if (!val) return;
+        writePref(IMAGE_TYPE_PREF_KEY, val);
+        setCameraSetting(selectEl.dataset.settingName, val);
+    });
+
+    // Ensure correct initial disabled/tooltip state if a timelapse is already running.
+    updateButtonStates();
+}
+
 // --- Event Listeners ---
 // Set up event listeners when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Camera.js: DOM loaded");
-    
+
     // Refresh button
     if (btnRefreshSettings) {
         btnRefreshSettings.addEventListener('click', async () => {
@@ -234,19 +376,19 @@ document.addEventListener('DOMContentLoaded', () => {
             await getCameraSettings(); // Then refresh settings
         });
     }
-    
+
     // Capture button
     if (btnCaptureSingle) {
         btnCaptureSingle.addEventListener('click', captureSingle);
     }
-    
+
     // Settings changes using event delegation
     if (cameraSettingsContainer) {
         cameraSettingsContainer.addEventListener('change', (event) => {
             const target = event.target;
             // Check if the changed element is one of our setting controls AND not disabled
-            if (target.dataset.settingName && !target.disabled && 
-                (target.tagName === 'SELECT' || target.type === 'checkbox' || 
+            if (target.dataset.settingName && !target.disabled &&
+                (target.tagName === 'SELECT' || target.type === 'checkbox' ||
                  target.type === 'text' || target.type === 'range')) {
                 // Range input 'change' event is handled directly to avoid duplicate calls
                 if (target.type !== 'range') {
@@ -256,13 +398,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     // Initial data loading
     getCameraStatus();
     getCameraSettings();
+    initResolutionDropdown();
+    initImageTypeDropdown();
 });
 
 // --- Exports ---
 // Make functions available to other modules
 window.getCameraStatus = getCameraStatus;
 window.setCameraSetting = setCameraSetting;
+window.updateButtonStates = updateButtonStates;

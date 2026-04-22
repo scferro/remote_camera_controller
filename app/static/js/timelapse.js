@@ -159,6 +159,9 @@ async function startTimelapse() {
         console.log("Timelapse started on backend.");
         if (timelapseStatusMessage) timelapseStatusMessage.textContent = "Started...";
         if (timelapseProgress) timelapseProgress.textContent = `0 / ${count}`;
+        if (typeof window.updateButtonStates === 'function') {
+            window.updateButtonStates();
+        }
         startTimelapseStatusPolling(count);
     } else {
         alert(`Failed to start timelapse: ${data?.message || 'Unknown error.'}`);

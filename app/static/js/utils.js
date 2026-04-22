@@ -116,6 +116,7 @@ function switchTab(targetTabId) {
 
 // Form persistence utilities
 function saveFormValue(element) {
+    if (element.id && element.dataset && element.dataset.noPersist === 'true') return;
     if (element.id) {
         const value = element.type === 'checkbox' || element.type === 'radio' ? element.checked : element.value;
         localStorage.setItem(`form_${element.id}`, JSON.stringify(value));
@@ -124,6 +125,7 @@ function saveFormValue(element) {
 
 function restoreFormData() {
     document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (element.dataset && element.dataset.noPersist === 'true') return;
         if (element.id) {
             const savedValue = localStorage.getItem(`form_${element.id}`);
             if (savedValue !== null) {

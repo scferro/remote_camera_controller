@@ -60,6 +60,32 @@ def get_camera_settings_api():
         current_app.logger.warning("Camera not available for /api/camera/settings request.")
         return jsonify({"error": "Camera not available."}), 503  # Service Unavailable
 
+@camera_bp.route('/sizes', methods=['GET'])
+def get_camera_sizes_api():
+    """API endpoint to get available image sizes/resolutions."""
+    current_app.logger.debug("API request: /api/camera/sizes")
+    cam = get_camera()
+    if not cam:
+        return jsonify({"error": "Camera not available."}), 503
+
+    options = cam.get_size_options()
+    if options is None:
+        return jsonify({"error": "Image size setting not available on this camera."}), 404
+    return jsonify(options)
+
+@camera_bp.route('/image-types', methods=['GET'])
+def get_camera_image_types_api():
+    """API endpoint to get available image types (format/quality)."""
+    current_app.logger.debug("API request: /api/camera/image-types")
+    cam = get_camera()
+    if not cam:
+        return jsonify({"error": "Camera not available."}), 503
+
+    options = cam.get_image_type_options()
+    if options is None:
+        return jsonify({"error": "Image type setting not available on this camera."}), 404
+    return jsonify(options)
+
 @camera_bp.route('/setting/<path:setting_name>', methods=['POST'])
 def set_camera_setting_api(setting_name):
     """API endpoint to set a specific camera setting."""

@@ -445,6 +445,70 @@ class CameraHandler:
                  return False, f"Unexpected error: {e}"
 
 
+    def _describe_widget_options(self, candidates):
+        """
+        Internal helper: find the first available widget from a candidate list
+        and return a dict describing its choices, current value, etc.
+        Caller MUST hold self.lock and the camera must be connected.
+        Returns None if no candidate widget is present on this camera.
+        """
+        try:
+            config = self.camera.get_config(self.context)
+        except Exception as e:
+            log.warning(f"Could not fetch config while describing options: {e}")
+            return None
+
+        widget, name = self._find_widget_from_candidates(config, candidates)
+        if widget is None:
+            return None
+
+        try:
+            choices = [widget.get_choice(i) for i in range(widget.count_choices())]
+            str_choices = [str(c) for c in choices if c is not None]
+        except gp.GPhoto2Error as e:
+            log.warning(f"Could not enumerate choices for '{name}': {e.string}")
+            str_choices = []
+
+        try:
+            current = widget.get_value()
+        except Exception:
+            current = None
+
+        try:
+            label = widget.get_label()
+        except Exception:
+            label = name
+
+        return {
+            "setting": name,
+            "label": label,
+            "current": current,
+            "choices": str_choices,
+            "readonly": widget.get_readonly(),
+        }
+
+    def get_size_options(self):
+        """Return a dict describing the camera's image-size setting, or None."""
+        with self.lock:
+            if not self._ensure_camera_connected():
+                return None
+            try:
+                return self._describe_widget_options(self._SIZE_SETTING_CANDIDATES)
+            except Exception as e:
+                log.error(f"Unexpected error getting size options: {e}", exc_info=True)
+                return None
+
+    def get_image_type_options(self):
+        """Return a dict describing the camera's image-format/quality setting, or None."""
+        with self.lock:
+            if not self._ensure_camera_connected():
+                return None
+            try:
+                return self._describe_widget_options(self._FORMAT_SETTING_CANDIDATES)
+            except Exception as e:
+                log.error(f"Unexpected error getting image-type options: {e}", exc_info=True)
+                return None
+
     def capture_preview(self, target_path, rotation=0, flip=False):
         """
         Captures a preview frame and saves it to target_path with optional rotation and flip.
@@ -594,14 +658,15 @@ class CameraHandler:
 
     def _switch_capture_format_locked(self, format_type):
         """
-        Switches the camera's image-format setting to 'jpeg' or 'raw' AND sets the
-        image size setting to its maximum, so JPEG captures use full resolution
-        rather than a low-res variant.
+        Switches the camera's image-format setting to 'jpeg' or 'raw'.
 
-        Returns a 4-tuple: (original_format_value, original_size_value,
-        format_widget_name, size_widget_name). Any element may be None if that
-        part was unavailable, read-only, or already at the desired value. Caller
-        MUST hold self.lock.
+        Image resolution is NOT touched here — the user controls resolution
+        directly via the UI's resolution dropdown, and that setting is expected
+        to persist across captures.
+
+        Returns a 4-tuple: (original_format_value, None, format_widget_name, None).
+        The size-related slots are always None; kept for caller-API stability.
+        Caller MUST hold self.lock.
         """
         if format_type not in ("jpeg", "raw"):
             return None, None, None, None
@@ -614,10 +679,7 @@ class CameraHandler:
 
         original_format_value = None
         format_widget_name = None
-        original_size_value = None
-        size_widget_name = None
 
-        # --- Format / quality setting ---
         format_widget, fmt_name = self._find_widget_from_candidates(
             config, self._FORMAT_SETTING_CANDIDATES
         )
@@ -650,50 +712,14 @@ class CameraHandler:
             except Exception as e:
                 log.warning(f"Failed to stage format change on '{fmt_name}': {e}")
 
-        # --- Image size setting (always maximize so JPEGs are full-res) ---
-        size_widget, sz_name = self._find_widget_from_candidates(
-            config, self._SIZE_SETTING_CANDIDATES
-        )
-        if size_widget is None:
-            log.warning(
-                f"No image-size setting found on camera (tried {list(self._SIZE_SETTING_CANDIDATES)}). "
-                f"Capturing at current size; JPEGs may not be full resolution."
-            )
-        elif size_widget.get_readonly():
-            log.warning(f"Image-size setting '{sz_name}' is read-only; cannot maximize resolution.")
-        else:
-            try:
-                current_value = size_widget.get_value()
-                choices = [size_widget.get_choice(i) for i in range(size_widget.count_choices())]
-                target_value = self._pick_largest_size_choice(choices)
-                if target_value is None:
-                    log.warning(
-                        f"Could not determine largest size in '{sz_name}' choices {choices}. "
-                        f"Leaving size at '{current_value}'."
-                    )
-                elif str(current_value) == str(target_value):
-                    log.debug(f"'{sz_name}' already at max '{current_value}'; no size change needed.")
-                else:
-                    log.info(
-                        f"Switching '{sz_name}' from '{current_value}' to '{target_value}' for max-resolution capture."
-                    )
-                    size_widget.set_value(target_value)
-                    original_size_value = current_value
-                    size_widget_name = sz_name
-            except Exception as e:
-                log.warning(f"Failed to stage size change on '{sz_name}': {e}")
-
-        # Apply both staged changes in a single set_config call.
-        if format_widget_name or size_widget_name:
+        if format_widget_name:
             try:
                 self.camera.set_config(config, self.context)
             except gp.GPhoto2Error as ex:
-                log.warning(f"Failed to apply format/size config changes: {ex.string}")
-                # Treat as no-change so caller doesn't try to restore values that
-                # were never actually written.
+                log.warning(f"Failed to apply format config change: {ex.string}")
                 return None, None, None, None
 
-        return original_format_value, original_size_value, format_widget_name, size_widget_name
+        return original_format_value, None, format_widget_name, None
 
     def _restore_capture_format_locked(self, format_widget_name, original_format_value,
                                        size_widget_name=None, original_size_value=None):
