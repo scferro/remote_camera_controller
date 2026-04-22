@@ -871,17 +871,19 @@ class CameraHandler:
 
                 log.info(f"Downloading {file_path.name} from {file_path.folder}...")
                 
-                # Download the file using NORMAL type (works for all cameras)
+                # Download the file using NORMAL type
                 camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-                file_size = camera_file.get_size_and_data()[0]
+                file_data = camera_file.get_data_and_size()  # Returns memoryview
+                file_size = len(file_data)
                 log.info(f"Downloaded file (type=NORMAL), size: {file_size:,} bytes")
-
+                
                 # --- Preserve original extension ---
                 orig_ext = os.path.splitext(file_path.name)[1]
                 base_save_path, _ = os.path.splitext(save_path)
                 save_path_with_ext = base_save_path + orig_ext
                 # -----------------------------------
 
+                # Save the file - camera_file.save() writes the data
                 camera_file.save(save_path_with_ext)
                 log.info(f"Image successfully saved to {save_path_with_ext}")
 
