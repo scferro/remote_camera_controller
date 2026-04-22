@@ -676,16 +676,14 @@ class CameraHandler:
                 continue
         return None, None
 
-    def _switch_capture_format_locked(self, format_type):
+    def _switch_capture_format_locked(self, format_type, force_max_resolution=False):
         """
         Switches the camera's image-format setting to 'jpeg' or 'raw'.
+        
+        If force_max_resolution=True, also sets image size to maximum.
+        This is used for timelapse to ensure full-resolution captures.
 
-        Image resolution is NOT touched here — the user controls resolution
-        directly via the UI's resolution dropdown, and that setting is expected
-        to persist across captures.
-
-        Returns a 4-tuple: (original_format_value, None, format_widget_name, None).
-        The size-related slots are always None; kept for caller-API stability.
+        Returns a 4-tuple: (original_format_value, original_size_value, format_widget_name, size_widget_name).
         Caller MUST hold self.lock.
         """
         if format_type not in ("jpeg", "raw"):
@@ -699,7 +697,10 @@ class CameraHandler:
 
         original_format_value = None
         format_widget_name = None
+        original_size_value = None
+        size_widget_name = None
 
+        # --- Format/quality setting ---
         format_widget, fmt_name = self._find_widget_from_candidates(
             config, self._FORMAT_SETTING_CANDIDATES
         )
@@ -739,7 +740,44 @@ class CameraHandler:
                 log.warning(f"Failed to apply format config change: {ex.string}")
                 return None, None, None, None
 
-        return original_format_value, None, format_widget_name, None
+        # --- Image size setting (maximize for full-resolution) ---
+        if force_max_resolution:
+            size_widget, sz_name = self._find_widget_from_candidates(
+                config, self._SIZE_SETTING_CANDIDATES
+            )
+            if size_widget is None:
+                log.warning(
+                    f"No image-size setting found (tried {list(self._SIZE_SETTING_CANDIDATES)}). "
+                    f"Capturing at current size."
+                )
+            elif size_widget.get_readonly():
+                log.warning(f"Image-size setting '{sz_name}' is read-only; cannot maximize resolution.")
+            else:
+                try:
+                    current_value = size_widget.get_value()
+                    choices = [size_widget.get_choice(i) for i in range(size_widget.count_choices())]
+                    target_value = self._pick_largest_size_choice(choices)
+                    if target_value is None:
+                        log.warning(f"Could not determine largest size from choices {choices}.")
+                    elif str(current_value) == str(target_value):
+                        log.debug(f"'{sz_name}' already at max '{current_value}'.")
+                    else:
+                        log.info(f"Setting '{sz_name}' from '{current_value}' to '{target_value}' for max resolution.")
+                        size_widget.set_value(target_value)
+                        original_size_value = current_value
+                        size_widget_name = sz_name
+                except Exception as e:
+                    log.warning(f"Failed to set max resolution: {e}")
+
+            # Apply size change if we made one
+            if size_widget_name:
+                try:
+                    self.camera.set_config(config, self.context)
+                except gp.GPhoto2Error as ex:
+                    log.warning(f"Failed to apply size config change: {ex.string}")
+                    # Continue anyway - format change was successful
+
+        return original_format_value, original_size_value, format_widget_name, size_widget_name
 
     def _restore_capture_format_locked(self, format_widget_name, original_format_value,
                                        size_widget_name=None, original_size_value=None):
@@ -793,7 +831,7 @@ class CameraHandler:
             except Exception as e:
                 log.warning(f"Failed to apply restore of capture settings: {e}")
 
-    def capture_image(self, save_path, format="current"):
+    def capture_image(self, save_path, format="current", force_max_resolution=False):
         """
         Captures a full-resolution image, downloads it, saves it to the specified file path,
         attempts to delete it from the camera, then fully disconnects to ensure a fresh connection next time.
@@ -803,8 +841,9 @@ class CameraHandler:
                 with the one the camera returns (e.g. .jpg, .arw).
             format: One of "current" (default — use camera's current setting), "jpeg", or "raw".
                 When "jpeg" or "raw", the camera's image-quality setting is temporarily switched
-                for the capture and restored afterwards. If the camera does not expose the
-                setting, capture proceeds with the current setting and a warning is logged.
+                for the capture and restored afterwards.
+            force_max_resolution: If True, also sets image size to maximum resolution before capture.
+                Used for timelapse to ensure full-resolution captures regardless of UI setting.
         """
         with self.lock:
             if not self._ensure_camera_connected():
@@ -819,7 +858,7 @@ class CameraHandler:
                     log.warning(f"Unknown format '{format}'; using camera's current setting.")
                 else:
                     (original_format_value, original_size_value,
-                     format_widget_name, size_widget_name) = self._switch_capture_format_locked(format)
+                     format_widget_name, size_widget_name) = self._switch_capture_format_locked(format, force_max_resolution)
 
             try:
                 log.info("Capturing image...")

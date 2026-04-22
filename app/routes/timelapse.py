@@ -72,11 +72,10 @@ def run_timelapse(app, interval, count):
 
             try:
                 # Build a full file path using save_path keyword.
-                # Force JPEG mode for the whole sequence; capture_image will fall back
-                # to the camera's current setting if the camera doesn't expose the
-                # image-format widget (and will log a warning).
+                # Force JPEG mode AND max resolution for the whole sequence to ensure
+                # full-resolution captures regardless of UI dropdown setting.
                 photo_file = os.path.join(sequence_path, f"{i+1:04d}.jpg")
-                success, filepath = cam.capture_image(save_path=photo_file, format="jpeg")
+                success, filepath = cam.capture_image(save_path=photo_file, format="jpeg", force_max_resolution=True)
                 
                 if success:
                     logger.info(f"Image {i+1} captured successfully: {filepath}")
