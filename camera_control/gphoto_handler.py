@@ -864,45 +864,17 @@ class CameraHandler:
                 log.info("Capturing image...")
                 file_path = self.camera.capture(gp.GP_CAPTURE_IMAGE, self.context)
                 log.info(f"Image captured on camera: Folder: '{file_path.folder}', Name: '{file_path.name}'")
+                
+                # Wait briefly for camera to finish writing the file
+                import time
+                time.sleep(0.5)  # 500ms delay to ensure file is ready
 
                 log.info(f"Downloading {file_path.name} from {file_path.folder}...")
                 
-                # Try to get the full-resolution file first (GP_FILE_TYPE_RAW)
-                # Some cameras (including Sony) store full-res as RAW even for JPEG captures
-                camera_file = None
-                file_type_used = None
-                
-                # Try RAW type first
-                try:
-                    camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_RAW)
-                    file_type_used = "RAW"
-                    log.info("Downloaded full-resolution file (type=RAW)")
-                except gp.GPhoto2Error as raw_err:
-                    # Fall back to NORMAL if RAW fails
-                    log.debug(f"RAW type failed ({raw_err.string}), trying NORMAL...")
-                    try:
-                        camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-                        file_type_used = "NORMAL"
-                        log.info("Downloaded file (type=NORMAL)")
-                    except gp.GPhoto2Error as norm_err:
-                        log.error(f"Both RAW and NORMAL failed: RAW={raw_err.string}, NORMAL={norm_err.string}")
-                        self._restore_capture_format_locked(
-                            format_widget_name, original_format_value,
-                            size_widget_name, original_size_value,
-                        )
-                        self._release_camera()
-                        return False, None
-                
-                if camera_file is None:
-                    log.error("Failed to download image - camera_file is None")
-                    self._restore_capture_format_locked(
-                        format_widget_name, original_format_value,
-                        size_widget_name, original_size_value,
-                    )
-                    self._release_camera()
-                    return False, None
-                
-                log.info(f"Image data downloaded from camera ({file_type_used}).")
+                # Download the file using NORMAL type (works for all cameras)
+                camera_file = self.camera.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
+                file_size = camera_file.get_size_and_data()[0]
+                log.info(f"Downloaded file (type=NORMAL), size: {file_size:,} bytes")
 
                 # --- Preserve original extension ---
                 orig_ext = os.path.splitext(file_path.name)[1]
