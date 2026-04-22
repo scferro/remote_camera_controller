@@ -188,19 +188,27 @@ function populateCollapsibleSettings(settings, container) {
 
 // --- Setting a Camera Setting ---
 async function setCameraSetting(settingName, value) {
+    if (!settingName) {
+        console.error('setCameraSetting called with no settingName');
+        return;
+    }
     console.log(`Setting ${settingName} to ${value}`);
     
-    const response = await fetchApi(`/api/camera/setting/${settingName}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: value })
-    });
-    
-    if (response && response.success) {
-        console.log(`Successfully set ${settingName} to ${value}`);
-    } else {
-        console.error(`Failed to set ${settingName} to ${value}`);
-        alert(`Failed to update setting: ${response?.message || 'Unknown error'}`);
+    try {
+        const response = await fetchApi(`/api/camera/setting/${settingName}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: value })
+        }, false); // Don't show loading spinner
+        
+        if (response && response.success) {
+            console.log(`Successfully set ${settingName} to ${value}`);
+        } else {
+            console.error(`Failed to set ${settingName} to ${value}:`, response?.message || 'Unknown error');
+            // Don't alert - too disruptive during initialization
+        }
+    } catch (err) {
+        console.error(`Exception setting ${settingName} to ${value}:`, err);
     }
 }
 
@@ -277,6 +285,15 @@ function pickLargestResolution(choices) {
     return choices[0] || null;
 }
 
+function formatResolutionChoice(choice) {
+    // If choice already contains dimensions (e.g., "6000x4000"), return as-is
+    if (/\d+[xX×]\d+/.test(choice)) {
+        return choice;
+    }
+    // Otherwise, it's a label like "Large" or "L:3:2" - keep it but note it's a label
+    return choice;
+}
+
 function populateSelect(selectEl, choices, selected) {
     selectEl.innerHTML = '';
     choices.forEach(choice => {
@@ -294,74 +311,90 @@ async function initResolutionDropdown() {
     const selectEl = document.getElementById('select-resolution');
     if (!selectEl) return;
 
-    const data = await fetchApi('/api/camera/sizes', {}, false);
-    if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
-        markDropdownUnavailable(selectEl, 'Unavailable');
-        return;
+    try {
+        const data = await fetchApi('/api/camera/sizes', {}, false);
+        if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+            markDropdownUnavailable(selectEl, 'Unavailable');
+            console.warn('No resolution options available from camera');
+            return;
+        }
+
+        const saved = readPref(RESOLUTION_PREF_KEY);
+        let initial;
+        if (saved && data.choices.includes(saved)) {
+            initial = saved;
+        } else if (data.current && data.choices.includes(String(data.current))) {
+            initial = String(data.current);
+        } else {
+            initial = pickLargestResolution(data.choices);
+        }
+
+        populateSelect(selectEl, data.choices, initial);
+        selectEl.dataset.settingName = data.setting;
+        selectEl.disabled = !!data.readonly;
+
+        if (initial && String(data.current) !== initial && !data.readonly) {
+            console.log(`Setting initial resolution to ${initial}`);
+            await setCameraSetting(data.setting, initial);
+        }
+
+        selectEl.addEventListener('change', async () => {
+            const val = selectEl.value;
+            if (!val) return;
+            writePref(RESOLUTION_PREF_KEY, val);
+            console.log(`Resolution changed to ${val}`);
+            await setCameraSetting(selectEl.dataset.settingName, val);
+        });
+    } catch (err) {
+        console.error('Failed to initialize resolution dropdown:', err);
+        markDropdownUnavailable(selectEl, 'Error');
     }
-
-    const saved = readPref(RESOLUTION_PREF_KEY);
-    let initial;
-    if (saved && data.choices.includes(saved)) {
-        initial = saved;
-    } else if (data.current && data.choices.includes(String(data.current))) {
-        initial = String(data.current);
-    } else {
-        initial = pickLargestResolution(data.choices);
-    }
-
-    populateSelect(selectEl, data.choices, initial);
-    selectEl.dataset.settingName = data.setting;
-    selectEl.disabled = !!data.readonly;
-
-    if (initial && String(data.current) !== initial && !data.readonly) {
-        setCameraSetting(data.setting, initial);
-    }
-
-    selectEl.addEventListener('change', () => {
-        const val = selectEl.value;
-        if (!val) return;
-        writePref(RESOLUTION_PREF_KEY, val);
-        setCameraSetting(selectEl.dataset.settingName, val);
-    });
 }
 
 async function initImageTypeDropdown() {
     const selectEl = document.getElementById('select-image-type');
     if (!selectEl) return;
 
-    const data = await fetchApi('/api/camera/image-types', {}, false);
-    if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
-        markDropdownUnavailable(selectEl, 'Unavailable');
-        return;
+    try {
+        const data = await fetchApi('/api/camera/image-types', {}, false);
+        if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+            markDropdownUnavailable(selectEl, 'Unavailable');
+            console.warn('No image type options available from camera');
+            return;
+        }
+
+        const saved = readPref(IMAGE_TYPE_PREF_KEY);
+        let initial;
+        if (saved && data.choices.includes(saved)) {
+            initial = saved;
+        } else if (data.current && data.choices.includes(String(data.current))) {
+            initial = String(data.current);
+        } else {
+            initial = data.choices[0];
+        }
+
+        populateSelect(selectEl, data.choices, initial);
+        selectEl.dataset.settingName = data.setting;
+
+        if (initial && String(data.current) !== initial && !data.readonly) {
+            console.log(`Setting initial image type to ${initial}`);
+            await setCameraSetting(data.setting, initial);
+        }
+
+        selectEl.addEventListener('change', async () => {
+            const val = selectEl.value;
+            if (!val) return;
+            writePref(IMAGE_TYPE_PREF_KEY, val);
+            console.log(`Image type changed to ${val}`);
+            await setCameraSetting(selectEl.dataset.settingName, val);
+        });
+
+        // Ensure correct initial disabled/tooltip state if a timelapse is already running.
+        updateButtonStates();
+    } catch (err) {
+        console.error('Failed to initialize image type dropdown:', err);
+        markDropdownUnavailable(selectEl, 'Error');
     }
-
-    const saved = readPref(IMAGE_TYPE_PREF_KEY);
-    let initial;
-    if (saved && data.choices.includes(saved)) {
-        initial = saved;
-    } else if (data.current && data.choices.includes(String(data.current))) {
-        initial = String(data.current);
-    } else {
-        initial = data.choices[0];
-    }
-
-    populateSelect(selectEl, data.choices, initial);
-    selectEl.dataset.settingName = data.setting;
-
-    if (initial && String(data.current) !== initial && !data.readonly) {
-        setCameraSetting(data.setting, initial);
-    }
-
-    selectEl.addEventListener('change', () => {
-        const val = selectEl.value;
-        if (!val) return;
-        writePref(IMAGE_TYPE_PREF_KEY, val);
-        setCameraSetting(selectEl.dataset.settingName, val);
-    });
-
-    // Ensure correct initial disabled/tooltip state if a timelapse is already running.
-    updateButtonStates();
 }
 
 // --- Event Listeners ---
