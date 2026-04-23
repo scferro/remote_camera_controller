@@ -1,46 +1,31 @@
-<div class="panel">
-    <details id="timelapse-config" open>
-        <summary class="text-base font-semibold mb-1 cursor-pointer select-none">Timelapse Settings</summary>
-
-        <div class="timelapse-row">
-            <input type="radio" id="calculate-interval" name="timelapse-calculate-field" value="interval" class="timelapse-radio">
-            <label for="calculate-interval" class="timelapse-row-label">Interval</label>
-            <div class="timelapse-inputs">
-                <input type="number" id="timelapse-interval-hours" value="0" min="0" class="w-input-xs">
-                <span class="timelapse-unit">h</span>
-                <input type="number" id="timelapse-interval-minutes" value="0" min="0" max="59" class="w-input-xs">
-                <span class="timelapse-unit">m</span>
-                <input type="number" id="timelapse-interval-seconds" value="5" min="0" max="59" class="w-input-xs">
-                <span class="timelapse-unit">s</span>
-            </div>
+<div id="timelapse-panel">
+    <div class="timelapse-row">
+        <label for="timelapse-interval-seconds" class="timelapse-row-label">Interval</label>
+        <div class="number-stepper">
+            <button type="button" class="stepper-btn stepper-dec" data-target="timelapse-interval-seconds" data-step="1">&minus;</button>
+            <input type="number" id="timelapse-interval-seconds" value="5" min="1" class="stepper-input">
+            <button type="button" class="stepper-btn stepper-inc" data-target="timelapse-interval-seconds" data-step="1">+</button>
         </div>
+        <span class="timelapse-unit">s</span>
+    </div>
 
-        <div class="timelapse-row">
-            <input type="radio" id="calculate-count" name="timelapse-calculate-field" value="count" class="timelapse-radio">
-            <label for="calculate-count" class="timelapse-row-label">Count</label>
-            <div class="timelapse-inputs">
-                <input type="number" id="timelapse-count" value="100" min="2" class="w-input-xs">
-            </div>
+    <div class="timelapse-row">
+        <label for="timelapse-count" class="timelapse-row-label">Count</label>
+        <div class="number-stepper">
+            <button type="button" class="stepper-btn stepper-dec" data-target="timelapse-count" data-step="1">&minus;</button>
+            <input type="number" id="timelapse-count" value="100" min="2" class="stepper-input">
+            <button type="button" class="stepper-btn stepper-inc" data-target="timelapse-count" data-step="1">+</button>
         </div>
+    </div>
 
-        <div class="timelapse-row">
-            <input type="radio" id="calculate-duration" name="timelapse-calculate-field" value="duration" class="timelapse-radio" checked>
-            <label for="calculate-duration" class="timelapse-row-label">Duration</label>
-            <div class="timelapse-inputs">
-                <input type="number" id="timelapse-duration-hours" value="0" min="0" class="w-input-xs">
-                <span class="timelapse-unit">h</span>
-                <input type="number" id="timelapse-duration-minutes" value="8" min="0" max="59" class="w-input-xs">
-                <span class="timelapse-unit">m</span>
-                <input type="number" id="timelapse-duration-seconds" value="20" min="0" max="59" class="w-input-xs">
-                <span class="timelapse-unit">s</span>
-            </div>
-        </div>
-    </details>
+    <div id="timelapse-duration-display">Duration: <span id="duration-display">8m 20s</span></div>
 
-    <button id="btn-start-timelapse" class="w-full mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium">Start Timelapse</button>
-    <button id="btn-stop-timelapse" class="w-full mt-1 danger text-white font-medium disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop Timelapse</button>
-    <div id="timelapse-status-container" class="mt-1 text-xs text-gray-600">
-        <p>Status: <span id="timelapse-status-message">Idle</span></p>
-        <p>Progress: <span id="timelapse-progress">0 / 0</span></p>
+    <div id="timelapse-buttons">
+        <button id="btn-start-timelapse">Start</button>
+        <button id="btn-stop-timelapse" class="danger" disabled>Stop</button>
+    </div>
+    <div id="timelapse-status-container">
+        <span>Status: <span id="timelapse-status-message">Idle</span></span>
+        <span>Progress: <span id="timelapse-progress">0 / 0</span></span>
     </div>
 </div>

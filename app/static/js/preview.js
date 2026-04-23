@@ -12,7 +12,7 @@ const previewRateInput = document.getElementById('preview-rate');
 
 // --- State ---
 let previewIntervalId = null;
-let previewRefreshRate = 1000; // Milliseconds (matches 1 FPS default)
+let previewRefreshRate = 1000;
 window.isPreviewActive = false;
 
 // --- Live Preview ---
@@ -27,14 +27,12 @@ async function startPreview(rotation = null) {
         rotation = 0;
     }
 
-    // Configure container aspect ratio only
     if (previewContainer) {
         previewContainer.style.aspectRatio = '3/2';
     }
     if (livePreviewImage) {
         livePreviewImage.classList.remove('hidden');
-        livePreviewImage.src = ''; // Clear any previous image
-        // No client-side transform needed - all handled by Python
+        livePreviewImage.src = '';
         livePreviewImage.style.transform = '';
     }
 
@@ -57,11 +55,10 @@ async function startPreview(rotation = null) {
         console.log(`Preview started backend. Refresh interval: ${previewRefreshRate}ms`);
         window.isPreviewActive = true;
         if (btnStopPreview) btnStopPreview.disabled = false;
-        
+
         previewIntervalId = setInterval(() => {
             const timestamp = new Date().getTime();
             if (livePreviewImage) {
-                // Use the correct URL for the preview image (match Flask route)
                 livePreviewImage.src = `/api/preview/image/preview.jpg?t=${timestamp}`;
                 livePreviewImage.style.display = 'block';
             }
@@ -86,15 +83,14 @@ async function startPreview(rotation = null) {
 async function stopPreview() {
     console.log("Stopping preview...");
     if (livePreviewImage) {
-        livePreviewImage.classList.add('hidden');  // Hide the image
-        livePreviewImage.src = '';  // Clear the source
+        livePreviewImage.classList.add('hidden');
+        livePreviewImage.src = '';
     }
     if (!window.isPreviewActive && !previewIntervalId) {
         console.log("Stop preview called but not active.");
-        // Ensure buttons are correct even if called when not active
         if (btnStartPreview) btnStartPreview.disabled = false;
         if (btnStopPreview) btnStopPreview.disabled = true;
-        return Promise.resolve(); // Return resolved promise
+        return Promise.resolve();
     }
 
     if (previewIntervalId) {
@@ -103,19 +99,15 @@ async function stopPreview() {
         console.log("Frontend preview refresh stopped.");
     }
     window.isPreviewActive = false;
-    // Disable stop immediately, Start will be re-enabled by getCameraStatus
     if (btnStopPreview) btnStopPreview.disabled = true;
 
-    // Tell the backend to stop generating previews
-    // Use try/finally to ensure getCameraStatus runs even if fetch fails
     try {
         await fetchApi('/api/preview/stop', { method: 'POST' });
     } catch(e) {
         console.error("Error calling stop preview API:", e);
     } finally {
-        // Refresh camera status to update button states correctly based on actual camera state
         if (typeof window.getCameraStatus === 'function') {
-            await window.getCameraStatus(); // Wait for status update before resolving
+            await window.getCameraStatus();
         }
     }
 }
@@ -123,17 +115,15 @@ async function stopPreview() {
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Preview.js: DOM loaded");
-    
-    // Start/Stop preview buttons
+
     if (btnStartPreview) {
         btnStartPreview.addEventListener('click', () => startPreview(0));
     }
-    
+
     if (btnStopPreview) {
         btnStopPreview.addEventListener('click', stopPreview);
     }
 
-    // Preview rate change
     if (previewRateInput) {
         previewRateInput.addEventListener('change', () => {
             const newRate = parseFloat(previewRateInput.value);
@@ -141,13 +131,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewRefreshRate = Math.max(100, 1000 / newRate);
                 if (window.isPreviewActive) {
                     console.log("Preview rate changed, restarting preview...");
-                    // Stop preview, then start it again once stop is complete
                     stopPreview().then(() => {
                         startPreview();
                     });
                 }
             } else {
-                // Reset to default or show error if invalid
                 previewRateInput.value = (1.0 / (previewRefreshRate / 1000)).toFixed(1);
             }
         });
@@ -155,6 +143,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- Exports ---
-// Make functions available to other modules
 window.startPreview = startPreview;
 window.stopPreview = stopPreview;

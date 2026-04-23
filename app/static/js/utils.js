@@ -4,7 +4,6 @@
 
 // --- Utility Functions ---
 function showSpinner(show = true) {
-    // Check if element exists before trying to modify it
     const statusSpinner = document.getElementById('status-spinner');
     if (statusSpinner) {
         statusSpinner.classList.toggle('hidden', !show);
@@ -12,22 +11,13 @@ function showSpinner(show = true) {
 }
 
 function disableControls(disable = true) {
-    // Disable buttons during critical operations, checking if they exist first
     const btnCaptureSingle = document.getElementById('btn-capture-single');
     const btnStartTimelapse = document.getElementById('btn-start-timelapse');
-    
+
     if (btnCaptureSingle) btnCaptureSingle.disabled = disable;
     if (btnStartTimelapse) btnStartTimelapse.disabled = disable;
-    // Add others as needed
 }
 
-/**
- * Helper function to make API calls
- * @param {string} url - The URL to fetch
- * @param {Object} options - Fetch options
- * @param {boolean} showLoading - Whether to show loading spinner
- * @returns {Promise<Object|null>} - The response data or null
- */
 async function fetchApi(url, options = {}, showLoading = true) {
     const fetchOptions = (typeof options === 'object' && options !== null) ? options : {};
 
@@ -38,7 +28,6 @@ async function fetchApi(url, options = {}, showLoading = true) {
         const response = await fetch(url, fetchOptions);
         if (!response.ok) {
             console.error(`API Error ${response.status}: ${response.statusText} for ${url}`);
-            // Handle both camera status and settings endpoints silently when camera is disconnected
             if (url.includes('/api/camera/status') || url.includes('/api/camera/settings') || url.includes('/api/camera/quality')) {
                 return null;
             }
@@ -64,7 +53,6 @@ async function fetchApi(url, options = {}, showLoading = true) {
         }
     } catch (error) {
         console.error(`Network or fetch error for ${url}:`, error);
-        // Handle both camera status and settings endpoints silently when there are errors
         if (url.includes('/api/camera/status') || url.includes('/api/camera/settings')) {
             return null;
         }
@@ -79,8 +67,17 @@ async function fetchApi(url, options = {}, showLoading = true) {
 }
 
 // Tab switching functionality
+let currentTabId = null;
+
 function switchTab(targetTabId) {
     console.debug(`Switching to tab: ${targetTabId}`);
+
+    // Stop preview if leaving the preview tab
+    if (currentTabId === '#tab-preview' && targetTabId !== '#tab-preview' && window.isPreviewActive) {
+        console.log("Switching away from Preview tab, stopping preview.");
+        window.stopPreview();
+    }
+
     // Hide all content panels
     document.querySelectorAll('.tab-content').forEach(content => {
         if (content) content.classList.add('hidden');
@@ -107,11 +104,7 @@ function switchTab(targetTabId) {
         console.error(`Tab button not found for target: ${targetTabId}`);
     }
 
-    // Stop preview if switching away from the live control tab
-    if (targetTabId !== '#tab-live-control' && window.isPreviewActive) {
-        console.log("Switching tab away from Live Control, stopping preview.");
-        window.stopPreview(); // Call async function but don't wait for it here
-    }
+    currentTabId = targetTabId;
 }
 
 // Form persistence utilities
@@ -134,7 +127,6 @@ function restoreFormData() {
                     } else {
                         element.value = parsedValue;
                     }
-                    // Trigger change event to update any calculated fields
                     element.dispatchEvent(new Event('change', { bubbles: true }));
                 } catch (e) {
                     console.warn(`Failed to restore value for ${element.id}:`, e);
@@ -153,21 +145,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetTabId = button.getAttribute('data-tab-target');
                 if (targetTabId) {
                     switchTab(targetTabId);
-                } else {
-                    console.error("Tab button clicked but missing data-tab-target attribute.");
                 }
             });
         }
     });
 
-    // Activate the first tab by default
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
-    if (tabButtons.length > 0 && tabContents.length > 0) {
-        switchTab('#tab-live-control');
-    } else {
-        console.error("Tab buttons or content panels not found on DOM load.");
-    }
+    // Activate preview tab by default
+    switchTab('#tab-preview');
 
     // Set up form persistence
     document.addEventListener('input', (e) => {

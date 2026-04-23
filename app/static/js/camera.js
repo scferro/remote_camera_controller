@@ -26,14 +26,13 @@ async function getCameraStatus() {
 
     const data = await fetchApi('/api/camera/status');
 
-    // Handle disconnected state (null data or failed fetch) same as explicit disconnected status
+    // Handle disconnected state
     if (!data || !data.connected) {
         statusConnection.textContent = 'Disconnected';
         statusConnection.style.color = 'red';
         statusModel.textContent = 'N/A';
         statusMessage.textContent = data?.message || 'Camera not connected';
 
-        // Disable all controls
         disableAllControls();
         if (currentQualityDisplay) currentQualityDisplay.textContent = '--';
         return;
@@ -41,7 +40,7 @@ async function getCameraStatus() {
 
     // Handle connected state
     statusConnection.textContent = 'Connected';
-    statusConnection.style.color = 'green';
+    statusConnection.style.color = '#34d399';
     statusModel.textContent = data.model || 'N/A';
     statusMessage.textContent = data.message || '';
 
@@ -50,6 +49,14 @@ async function getCameraStatus() {
 
     // Fetch current quality setting
     updateQualityDisplay();
+
+    // Auto-start preview if on the preview tab
+    if (currentTabId === '#tab-preview' && !window.isPreviewActive && !window.isTimelapseActive) {
+        console.log("Camera connected and on preview tab — auto-starting preview.");
+        if (typeof window.startPreview === 'function') {
+            window.startPreview();
+        }
+    }
 }
 
 async function updateQualityDisplay() {
@@ -64,7 +71,6 @@ async function updateQualityDisplay() {
 }
 
 function disableAllControls() {
-    // Get all controls that should be disabled when camera is disconnected
     const btnStartPreview = document.getElementById('btn-start-preview');
     const btnStopPreview = document.getElementById('btn-stop-preview');
     const btnStartTimelapse = document.getElementById('btn-start-timelapse');
@@ -78,13 +84,11 @@ function disableAllControls() {
 }
 
 function updateButtonStates() {
-    // Update buttons based on current state
     const btnStartPreview = document.getElementById('btn-start-preview');
     const btnStopPreview = document.getElementById('btn-stop-preview');
     const btnStartTimelapse = document.getElementById('btn-start-timelapse');
     const btnStopTimelapse = document.getElementById('btn-stop-timelapse');
 
-    // Get state from window (shared with other modules)
     const isPreviewActive = window.isPreviewActive || false;
     const isTimelapseActive = window.isTimelapseActive || false;
 
@@ -114,7 +118,6 @@ async function captureSingle() {
         alert(`Capture failed: ${data?.message || 'Unknown error. Check logs.'}`);
     }
 
-    // Re-enable controls based on current status
     getCameraStatus();
 }
 

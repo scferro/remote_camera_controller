@@ -1,17 +1,14 @@
-<div class="panel">
-    <h2 class="panel-title">Live Preview</h2>
-    <div id="preview-container" class="relative bg-black">
-        <img id="live-preview-image"
-             src="{{ url_for('preview.preview_image', filename='preview.jpg') }}?t=0"
-             alt="Live Preview"
-             class="w-full h-auto bg-black min-h-[100px] hidden"
-             onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
-    </div>
-    <div id="preview-error" class="text-red-600 text-xs hidden">Preview failed to load.</div>
+<div id="preview-container">
+    <img id="live-preview-image"
+         src="{{ url_for('preview.preview_image', filename='preview.jpg') }}?t=0"
+         alt="Live Preview"
+         class="hidden"
+         onerror="this.style.display='none'; document.getElementById('preview-error').classList.remove('hidden');">
 </div>
-<div id="preview-controls" class="flex items-center gap-x-2 text-sm">
-    <label for="preview-rate">FPS:</label>
-    <input type="number" id="preview-rate" value="5" min="1.0" max="20.0" step="1.0" class="w-input-xs">
-    <button id="btn-start-preview" class="bg-blue-500 hover:bg-blue-600 text-white">Start</button>
-    <button id="btn-stop-preview" class="danger text-white disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Stop</button>
+<div id="preview-error" class="hidden">Preview failed</div>
+<div id="preview-controls">
+    <label for="preview-rate">FPS</label>
+    <input type="number" id="preview-rate" value="5" min="1.0" max="20.0" step="1.0">
+    <button id="btn-start-preview">Start</button>
+    <button id="btn-stop-preview" disabled>Stop</button>
 </div>

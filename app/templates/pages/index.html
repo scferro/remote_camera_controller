@@ -3,25 +3,25 @@
 {% block title %}Remote Camera Controller{% endblock %}
 
 {% block content %}
-<div id="tab-live-control">
-    <div id="app-layout">
-
-        <div id="status-bar">
-            {% include 'components/camera_status.html' %}
-        </div>
-
-        <div id="preview-section">
+<div id="status-bar">
+    {% include 'components/camera_status.html' %}
+</div>
+<div id="app-body">
+    <div id="tab-column">
+        <button class="tab-button active" data-tab-target="#tab-preview">Preview</button>
+        <button class="tab-button" data-tab-target="#tab-capture">Capture</button>
+        <button class="tab-button" data-tab-target="#tab-timelapse">Timelapse</button>
+    </div>
+    <div id="content-area">
+        <div id="tab-preview" class="tab-content">
             {% include 'components/preview.html' %}
         </div>
-
-        <div id="controls-section">
-            <button id="btn-capture-single" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium">
-                Capture Single Image
-            </button>
-            <p id="capture-status" class="text-xs text-gray-600 mt-1">Status: Idle</p>
+        <div id="tab-capture" class="tab-content hidden">
+            {% include 'components/capture.html' %}
+        </div>
+        <div id="tab-timelapse" class="tab-content hidden">
             {% include 'components/timelapse.html' %}
         </div>
-
     </div>
 </div>
 {% endblock %}
