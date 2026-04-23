@@ -344,6 +344,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Some timelapse input elements not found in the DOM");
     }
     
+    // Auto-collapse timelapse config on small screens
+    const timelapseConfig = document.getElementById('timelapse-config');
+    if (timelapseConfig && window.innerWidth < 640) {
+        timelapseConfig.removeAttribute('open');
+    }
+
     // Check for ongoing timelapse on load (in case of page refresh)
     startTimelapseStatusPolling(0); // Start polling, it will update state if active
 });

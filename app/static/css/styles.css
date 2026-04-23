@@ -5,6 +5,24 @@ body {
     color: #333;
 }
 
+/* Touch optimization */
+html {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+}
+
+button, .button, input[type="radio"], label {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+button:active:not(:disabled), .button:active:not(:disabled) {
+    transform: scale(0.96);
+    opacity: 0.85;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
 /* Panel styles */
 .panel {
     background-color: white;
@@ -161,7 +179,6 @@ label {
     background-color: #f3f4f6;
     overflow: hidden;
     margin-bottom: 0.75rem;
-    transition: aspect-ratio 0.3s ease;
 }
 
 #live-preview-image {
@@ -170,4 +187,96 @@ label {
     width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+/* Timelapse inline row layout */
+.timelapse-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px dashed #e5e7eb;
+    min-height: 2.25rem;
+}
+.timelapse-row:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.timelapse-radio { margin-right: 0.25rem; flex-shrink: 0; width: 1rem; height: 1rem; }
+.timelapse-row-label {
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: #4b5563;
+    min-width: 3.5rem;
+    flex-shrink: 0;
+    margin-right: 0.25rem;
+}
+.timelapse-inputs { display: flex; align-items: center; gap: 0.125rem; flex-wrap: nowrap; }
+.timelapse-unit { font-size: 0.75rem; color: #6b7280; margin: 0 0.1rem; }
+
+/* ── App layout ──────────────────────────────────────── */
+
+#status-bar {
+    background: #1f2937;
+    color: #d1d5db;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+#status-bar label { color: #d1d5db; font-weight: normal; margin: 0; }
+#status-bar .spinner { width: 10px; height: 10px; border-width: 2px; border-left-color: #60a5fa; margin-left: 0; }
+#status-bar #btn-refresh-settings {
+    margin-left: auto; padding: 2px 6px; font-size: 0.65rem;
+    background: #374151; border-radius: 3px; box-shadow: none;
+}
+#status-bar #btn-refresh-settings:hover { background: #4b5563; box-shadow: none; }
+
+/* Preview section — strip panel chrome */
+#preview-section .panel { margin: 0; border-radius: 0; box-shadow: none; padding: 0.375rem; }
+#preview-section .panel-title { display: none; }
+#preview-controls { padding: 0.25rem 0.375rem; }
+
+/* Inner tabs (Single / Timelapse) — removed; both sections now visible */
+
+/* ── Small-screen touch layout (Pi 480×320 / 800×480, below 640px) ── */
+@media (max-width: 639px) {
+    .panel { padding: 0.5rem; margin-bottom: 0.5rem; }
+    .panel-title { font-size: 0.95rem; margin-bottom: 0.375rem; padding-bottom: 0.375rem; }
+    .setting-group { margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
+
+    /* Buttons: 44px minimum touch target */
+    button, .button { min-height: 44px; padding: 0.5rem 1rem; font-size: 0.95rem; border-radius: 0.5rem; }
+
+    /* Inputs: 44px minimum height, 1rem font prevents iOS auto-zoom */
+    select, input[type="text"], input[type="number"] { min-height: 44px; padding: 0.375rem 0.5rem; font-size: 1rem; }
+    input.w-input-xs { width: 3.25rem; min-height: 44px; }
+    input.w-input-sm { width: 4.5rem; min-height: 44px; }
+
+    /* Radio buttons: enlarge for touch, labels fill 44px height */
+    .timelapse-radio { width: 1.5rem; height: 1.5rem; margin-right: 0.5rem; accent-color: #3b82f6; }
+    .timelapse-row label { display: inline-flex; align-items: center; min-height: 44px; }
+
+    /* Preview: cap at half viewport so controls remain visible */
+    #preview-container { aspect-ratio: unset; max-height: 50vh; min-height: 120px; }
+    #preview-section .panel { padding: 0.25rem; }
+    #preview-controls { padding: 0.375rem 0; gap: 0.5rem; }
+    #preview-controls button { min-height: 44px; flex: 0 0 auto; }
+    #preview-controls label { font-size: 0.85rem; }
+
+    /* Status bar: larger refresh button */
+    #status-bar #btn-refresh-settings { min-height: 36px; min-width: 36px; padding: 4px 10px; font-size: 0.8rem; }
+
+    /* Timelapse rows: 44px touch rows */
+    .timelapse-row { min-height: 44px; gap: 0.375rem; margin-bottom: 0.375rem; padding-bottom: 0.375rem; }
+    .timelapse-row-label { font-size: 0.85rem; min-width: 4.5rem; }
+    .timelapse-unit { font-size: 0.85rem; }
+    .timelapse-inputs { gap: 0.25rem; }
+    .timelapse-inputs input[type="number"] { min-height: 44px; }
+    #timelapse-status-container { font-size: 0.8rem; margin-top: 0.375rem; }
+
+    /* Collapsible timelapse config summary */
+    #timelapse-config summary { min-height: 44px; display: flex; align-items: center; font-size: 0.95rem; padding: 0.25rem 0; }
+
+    .spinner { width: 16px; height: 16px; border-width: 3px; }
 }
