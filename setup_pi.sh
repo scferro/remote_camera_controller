@@ -14,8 +14,11 @@ sudo apt-get install -y --no-install-recommends \
     chromium-browser xinit xserver-xorg xserver-xorg-video-all \
     libgphoto2-dev libraw-dev ffmpeg python3 python3-pip curl
 
+echo "==> Upgrading pip (required on Bullseye — system pip is too old to parse Flask's pyproject.toml)..."
+pip3 install --upgrade pip --timeout 60
+
 echo "==> Installing Python requirements..."
-pip3 install --quiet -r "$SCRIPT_DIR/requirements.txt"
+python3 -m pip install --timeout 60 -r "$SCRIPT_DIR/requirements.txt"
 
 echo "==> Stopping existing service if running..."
 sudo systemctl stop camera-controller 2>/dev/null || true
