@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
-# Run once from the project directory on a Raspberry Pi to configure
-# autostart on boot with Chromium kiosk mode.
+# Run from the project directory on a Raspberry Pi to install and configure
+# the camera controller to start automatically on boot, launching Chromium
+# directly in kiosk mode without loading the full desktop environment.
+# Safe to re-run — replaces any existing installation.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVICE_USER="$USER"
 PORT=5000
+
+echo "==> Installing system dependencies..."
+sudo apt-get update -q
+sudo apt-get install -y --no-install-recommends \
+    chromium-browser xinit xserver-xorg xserver-xorg-video-all \
+    libgphoto2-dev libraw-dev ffmpeg python3 python3-pip curl
+
+echo "==> Installing Python requirements..."
+pip3 install --quiet -r "$SCRIPT_DIR/requirements.txt"
+
+echo "==> Stopping existing service if running..."
+sudo systemctl stop camera-controller 2>/dev/null || true
 
 echo "==> Installing camera-controller systemd service..."
 sudo tee /etc/systemd/system/camera-controller.service > /dev/null <<EOF
@@ -14,34 +27,47 @@ Description=Remote Camera Controller
 After=network.target
 
 [Service]
-User=${SERVICE_USER}
-WorkingDirectory=${SCRIPT_DIR}
-ExecStart=/usr/bin/python3 ${SCRIPT_DIR}/run.py
+User=$USER
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=/usr/bin/python3 $SCRIPT_DIR/run.py
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
 sudo systemctl daemon-reload
-sudo systemctl enable --now camera-controller
-echo "    Service enabled and started."
+sudo systemctl enable camera-controller
+echo "    Service installed and enabled."
 
-echo "==> Creating Chromium kiosk autostart entry..."
-mkdir -p "$HOME/.config/autostart"
-cat > "$HOME/.config/autostart/camera-kiosk.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Camera Kiosk
-Exec=bash -c 'sleep 5 && chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-pinch --no-first-run http://127.0.0.1:${PORT}'
-X-GNOME-Autostart-enabled=true
-EOF
-echo "    Autostart entry written to ~/.config/autostart/camera-kiosk.desktop"
+echo "==> Configuring boot to console autologin (skips desktop)..."
+sudo raspi-config nonint do_boot_behaviour B2
+echo "    Boot mode set to console autologin."
+
+echo "==> Writing ~/.bash_profile to start X automatically on tty1..."
+cat > "$HOME/.bash_profile" <<'BASHPROFILE'
+[[ -f ~/.bashrc ]] && source ~/.bashrc
+if [[ -z "$DISPLAY" ]] && [[ "$(tty)" == "/dev/tty1" ]]; then
+    exec startx
+fi
+BASHPROFILE
+
+echo "==> Writing ~/.xinitrc for kiosk session..."
+cat > "$HOME/.xinitrc" <<XINITRC
+#!/bin/bash
+xset -dpms       # disable power management
+xset s off       # disable screensaver
+xset s noblank   # prevent screen blanking
+
+# Wait until Flask is ready before opening the browser
+until curl -s http://127.0.0.1:${PORT} > /dev/null 2>&1; do
+    sleep 1
+done
+
+exec chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-pinch --no-first-run --disable-translate --overscroll-history-navigation=0 http://127.0.0.1:${PORT}
+XINITRC
+chmod +x "$HOME/.xinitrc"
+echo "    Kiosk session configured."
 
 echo ""
-echo "==> Done. One manual step remaining:"
-echo "    Enable desktop autologin so Chromium can open on boot:"
-echo "    sudo raspi-config  ->  System Options -> Boot / Auto Login -> Desktop Autologin"
-echo ""
-echo "    Then reboot:  sudo reboot"
+echo "==> Setup complete. Run 'sudo reboot' to apply."

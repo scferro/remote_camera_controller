@@ -68,42 +68,45 @@ A web-based application to remotely control and manage USB-connected cameras (pr
 
 3.  The server will start, typically listening on `http://0.0.0.0:5000`.
 
-## Raspberry Pi Kiosk Setup (Boot to Fullscreen Browser)
+## Raspberry Pi Kiosk Setup (Boot Directly to Fullscreen Browser)
 
-This automates starting the app on boot and opening it fullscreen in Chromium — useful for a dedicated Pi-based camera controller.
+This configures the Pi to boot straight into Chromium without loading the full desktop environment — significantly faster on a Pi 3B. The app runs as a background service and Chromium opens automatically once it's ready.
 
 **Prerequisites:**
-- Raspberry Pi OS **with Desktop** (not Lite)
-- Chromium installed: `sudo apt-get install -y chromium-browser`
+- Raspberry Pi OS **with Desktop** installed (not Lite — X server must be present)
+- Run the script once from the project directory:
 
-**Steps:**
+```bash
+bash setup_pi.sh
+```
 
-1. **Enable desktop autologin** so the Pi logs in automatically on boot:
-    ```
-    sudo raspi-config
-    ```
-    Navigate to: **System Options → Boot / Auto Login → Desktop Autologin**
+**What the script does:**
+1. Installs system dependencies (`chromium-browser`, `xinit`, `libgphoto2-dev`, `ffmpeg`, etc.)
+2. Installs Python requirements from `requirements.txt`
+3. Creates and enables a systemd service that starts Flask on every boot
+4. Configures the Pi to **autologin to console** (skips the desktop entirely)
+5. Writes `~/.bash_profile` to start the X server automatically on login
+6. Writes `~/.xinitrc` to launch Chromium in kiosk mode, waiting until Flask is ready before opening
 
-2. **Run the setup script** from the project directory:
-    ```bash
-    bash setup_pi.sh
-    ```
-    This creates a systemd service that starts Flask on boot, and an autostart entry that opens Chromium in kiosk mode pointing to `http://localhost:5000`.
+**Reboot to apply:**
+```bash
+sudo reboot
+```
 
-3. **Reboot:**
-    ```bash
-    sudo reboot
-    ```
-    After ~30 seconds the browser will open fullscreen to the camera controller UI.
+After reboot, the Pi will boot to console, start the Flask service, start X, and open Chromium fullscreen — no desktop UI involved.
 
 **Notes for Pi 3B:**
-- First load can take 30–60 seconds — the `sleep 5` in the autostart entry gives Flask time to start before the browser opens.
-- If `chromium-browser` is not found, try `chromium` (package name varies by OS version).
+- Skipping the desktop saves ~20–40 seconds of boot time compared to loading LXDE.
+- Chromium opens exactly when Flask is ready (polls `http://127.0.0.1:5000`) — no fixed sleep delay.
+- The script is safe to re-run; it replaces any previous installation.
 
-**To disable kiosk mode:**
+**To remove kiosk mode:**
 ```bash
-sudo systemctl disable camera-controller
-rm ~/.config/autostart/camera-kiosk.desktop
+sudo systemctl disable --now camera-controller
+sudo rm /etc/systemd/system/camera-controller.service
+rm ~/.xinitrc ~/.bash_profile
+# To restore desktop boot:
+sudo raspi-config nonint do_boot_behaviour B4
 ```
 
 ---
