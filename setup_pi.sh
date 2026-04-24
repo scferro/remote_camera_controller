@@ -13,7 +13,8 @@ sudo apt-get update -q
 sudo apt-get install -y --no-install-recommends \
     chromium-browser xinit xserver-xorg xserver-xorg-video-all \
     libgphoto2-dev libraw-dev ffmpeg python3 python3-pip curl \
-    libjpeg-dev zlib1g-dev
+    libjpeg-dev zlib1g-dev \
+    onboard at-spi2-core
 
 echo "==> Upgrading pip (required on Bullseye — system pip is too old to parse Flask's pyproject.toml)..."
 pip3 install --upgrade pip --timeout 60
@@ -63,12 +64,15 @@ xset -dpms       # disable power management
 xset s off       # disable screensaver
 xset s noblank   # prevent screen blanking
 
+# Start on-screen keyboard (auto-shows when a text field is focused)
+onboard --size 800x200 --layout=Phone &
+
 # Wait until Flask is ready before opening the browser
 until curl -s http://127.0.0.1:${PORT} > /dev/null 2>&1; do
     sleep 1
 done
 
-exec chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-pinch --no-first-run --disable-translate --overscroll-history-navigation=0 http://127.0.0.1:${PORT}
+exec chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-pinch --no-first-run --disable-translate --overscroll-history-navigation=0 --force-renderer-accessibility http://127.0.0.1:${PORT}
 XINITRC
 chmod +x "$HOME/.xinitrc"
 echo "    Kiosk session configured."
