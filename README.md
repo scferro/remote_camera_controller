@@ -68,6 +68,46 @@ A web-based application to remotely control and manage USB-connected cameras (pr
 
 3.  The server will start, typically listening on `http://0.0.0.0:5000`.
 
+## Raspberry Pi Kiosk Setup (Boot to Fullscreen Browser)
+
+This automates starting the app on boot and opening it fullscreen in Chromium — useful for a dedicated Pi-based camera controller.
+
+**Prerequisites:**
+- Raspberry Pi OS **with Desktop** (not Lite)
+- Chromium installed: `sudo apt-get install -y chromium-browser`
+
+**Steps:**
+
+1. **Enable desktop autologin** so the Pi logs in automatically on boot:
+    ```
+    sudo raspi-config
+    ```
+    Navigate to: **System Options → Boot / Auto Login → Desktop Autologin**
+
+2. **Run the setup script** from the project directory:
+    ```bash
+    bash setup_pi.sh
+    ```
+    This creates a systemd service that starts Flask on boot, and an autostart entry that opens Chromium in kiosk mode pointing to `http://localhost:5000`.
+
+3. **Reboot:**
+    ```bash
+    sudo reboot
+    ```
+    After ~30 seconds the browser will open fullscreen to the camera controller UI.
+
+**Notes for Pi 3B:**
+- First load can take 30–60 seconds — the `sleep 5` in the autostart entry gives Flask time to start before the browser opens.
+- If `chromium-browser` is not found, try `chromium` (package name varies by OS version).
+
+**To disable kiosk mode:**
+```bash
+sudo systemctl disable camera-controller
+rm ~/.config/autostart/camera-kiosk.desktop
+```
+
+---
+
 ## Usage
 
 1.  Open a web browser on a device connected to the same network as the computer running the application.
