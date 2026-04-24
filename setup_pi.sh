@@ -12,7 +12,8 @@ echo "==> Installing system dependencies..."
 sudo apt-get update -q
 sudo apt-get install -y --no-install-recommends \
     chromium-browser xinit xserver-xorg xserver-xorg-video-all \
-    libgphoto2-dev libraw-dev ffmpeg python3 python3-pip curl
+    libgphoto2-dev libraw-dev ffmpeg python3 python3-pip curl \
+    libjpeg-dev zlib1g-dev
 
 echo "==> Upgrading pip (required on Bullseye — system pip is too old to parse Flask's pyproject.toml)..."
 pip3 install --upgrade pip --timeout 60
