@@ -34,7 +34,7 @@ cat > "$HOME/.config/autostart/camera-kiosk.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Camera Kiosk
-Exec=bash -c 'sleep 5 && chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-pinch --no-first-run http://localhost:${PORT}'
+Exec=bash -c 'sleep 5 && chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-pinch --no-first-run http://127.0.0.1:${PORT}'
 X-GNOME-Autostart-enabled=true
 EOF
 echo "    Autostart entry written to ~/.config/autostart/camera-kiosk.desktop"
